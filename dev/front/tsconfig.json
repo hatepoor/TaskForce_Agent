@@ -1,0 +1,5 @@
+{
+  // 根入口:直接继承应用配置,使 `vue-tsc --noEmit`(不带 -p)真实检查 src。
+  // (solution 式 files:[]+references 会让 --noEmit 静默空转,实测已证;tsconfig.node.json 供编辑器/未来 -b 使用)
+  "extends": "./tsconfig.app.json"
+}

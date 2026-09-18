@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "example-stdio": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"],
+      "env": {}
+    },
+    "example-http": {
+      "transport": "http",
+      "url": "https://your-mcp-server.example.com/mcp",
+      "headers": { "Authorization": "Bearer your-token-here" }
+    }
+  }
+}

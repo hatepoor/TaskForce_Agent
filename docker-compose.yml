@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: taskforce-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskforce
+      POSTGRES_PASSWORD: taskforce
+      POSTGRES_DB: taskforce
+    ports:
+      - "5433:5432"        # 主机 5433,规避本机 5432 常见冲突;容器内仍为 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforce -d taskforce"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pgdata:
