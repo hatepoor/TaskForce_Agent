@@ -53,5 +53,6 @@ class UsageTracker:
             f"输出 {self.output_tokens} tok | 合计 {total} tok"
         )
         if self.cache_read_tokens:
-            base += f" | 缓存命中 {self.cache_read_tokens} tok"
+            rate = self.cache_read_tokens / self.input_tokens * 100 if self.input_tokens else 0
+            base += f" | 缓存命中 {self.cache_read_tokens} tok({rate:.0f}%)"
         return base

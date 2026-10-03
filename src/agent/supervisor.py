@@ -11,11 +11,12 @@
 """
 import sys
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END
 from langgraph.types import Command, Send
 
 from agent.answer import _render_results
+from agent.context import assembleView
 from agent.contracts import (
     PREFIX_SUBAGENT_RESULT,
     PREFIX_SYSTEM_NOTICE,
@@ -27,6 +28,7 @@ from agent.contracts import (
 )
 from agent.memory_ctx import load_agents_md
 from agent.state import AgentState
+from settings.config import get_settings
 from settings.loader import load_prompt
 from tools.skills.loader import _skills_meta
 
@@ -137,7 +139,10 @@ def route_node(state: AgentState, llm, tasks=None, config=None) -> Command:
     # 固定 system(ADR-0011):仅静态内容(角色 + agents.md + 规则 + 输出格式),
     # 记忆检索/子结果等动态内容一律走消息流,不进 system(保前缀缓存)。
     system = load_prompt("supervisor", skills_meta=_skills_meta(), agents_md=load_agents_md())
-    messages = [SystemMessage(content=system), *state["messages"]]
+    messages = assembleView(
+            system, state.get("contextDigest") or {}, state["messages"],
+            get_settings().long_msg_limit,
+        )
     if state.get("subagent_results"):
         results = state["subagent_results"]
         note = ""

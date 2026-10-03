@@ -90,7 +90,11 @@ def test_success_flow_parses_json_answer(monkeypatch):
     _mock_search(monkeypatch, results=[RESULT_A, RESULT_B])
     llm = FakeReActLLM(rounds=[
         AIMessage(content="", tool_calls=[_call("LangGraph")]),
-        AIMessage('```json\n{"conclusion": "LangGraph 偏底层编排", "key_points": ["图状态"]}\n```'),
+        # 收尾带合格 report(≥80 字):M1 后 success 收尾不合格会触发 finalize 重试
+        AIMessage('```json\n{"conclusion": "LangGraph 偏底层编排", "key_points": ["图状态"], '
+                  '"report": "LangGraph 与 CrewAI 的核心差异在编排层级:LangGraph 暴露图与状态'
+                  '原语,适合需要精细控制流的复杂工作流;CrewAI 以角色分工开箱即用,适合快速搭建'
+                  '原型。结论均引用自检索条目,来源见下方列表。"}\n```'),
     ])
     final = _graph(llm).invoke({"contract": _contract()})
     (summary,) = final["subagent_results"]
@@ -98,6 +102,7 @@ def test_success_flow_parses_json_answer(monkeypatch):
     assert summary.status == "success"
     assert summary.conclusion == "LangGraph 偏底层编排"
     assert summary.key_points == ["图状态"]
+    assert summary.report.startswith("LangGraph 与 CrewAI")  # 成稿随摘要回传(M1)
     assert summary.sources == ["https://langchain-ai.github.io/langgraph/", "https://crewai.com"]
     # 检索正文随 data 回传:answer 汇总时据此作答(只给 100 字结论会丢正文,troubleshooting/03 §14)
     assert [r["title"] for r in summary.data["results"]] == ["LangGraph 文档", "CrewAI"]
@@ -147,6 +152,7 @@ def test_iteration_cap_partial(monkeypatch):
     assert summary.status == "partial"
     assert summary.warnings
     assert "上限" in summary.warnings[0]
+    assert summary.report == ""  # partial 无成稿(spec §七)
 
 
 def test_node_trace(monkeypatch):
@@ -168,7 +174,11 @@ def test_context_budget_injects_wrapup(monkeypatch):
     _mock_search(monkeypatch, results=[RESULT_A])
     llm = FakeReActLLM(rounds=[
         AIMessage(content="", tool_calls=[_call("q")]),
-        AIMessage("已有足够信息,收尾。"),
+        # 收尾带合格 report:避免触发 finalize 重试(会多出一帧 invoke,污染 counts 断言)
+        AIMessage('{"conclusion": "已有足够信息", "key_points": ["a"], '
+                  '"report": "基于上述检索整理的完整成稿正文:先给出结论,再分点展开论述,每条要点都'
+                  '附带依据与口径说明,并在结尾统一注明来源、出处与时点信息,整体篇幅足以通过成稿校验'
+                  '的下限要求,并非要点清单的照抄。"}'),
     ])
     big = SystemMessage(content="背景。" * 7000)  # 21k 字符,越过 16k 预算
     _graph(llm).invoke({

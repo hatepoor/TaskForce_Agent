@@ -126,7 +126,7 @@ def build_research_graph(llm) -> CompiledStateGraph:
                 conclusion="联网未检索到相关信息",
                 needs_clarification=["请提供更具体的检索方向或关键词"],
             )
-        conclusion, key_points = extract_answer(str(state["react_msgs"][-1].content))
+        conclusion, keyPoints, report = extract_answer(str(state["react_msgs"][-1].content))
         data = {"results": results[:RESULTS_IN_DATA]}
         if fetches:
             data["fetches"] = fetches[:FETCHES_IN_DATA]
@@ -136,9 +136,10 @@ def build_research_graph(llm) -> CompiledStateGraph:
             task=contract.task,
             status="success",
             conclusion=conclusion,
-            key_points=key_points,
+            key_points=keyPoints,
             data=data,
             sources=sources,
+            report=report,
         )
 
     return build_react_subgraph(

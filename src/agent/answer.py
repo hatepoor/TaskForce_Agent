@@ -9,11 +9,13 @@
     - agent/build.py:build_graph() 挂 answer 节点;
     - agent/supervisor.py:route_node 复用 _render_results 渲染回收结果提示。
 """
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from agent.context import assembleView, maybeCompact
 from agent.contracts import ResultSummary
 from agent.memory_ctx import MEMORY_TOOLS, load_agents_md
 from agent.state import RESET, AgentState
+from settings.config import get_settings
 from settings.loader import load_prompt
 from tools.mcp.client import mcp_meta
 from tools.sandbox.client import sandbox_meta
@@ -30,6 +32,8 @@ EVIDENCE_ITEMS_MAX = 4  # 每条结果最多渲染几条依据
 EVIDENCE_ITEM_CHARS = 250  # 单条依据正文上限
 EVIDENCE_TOTAL_CHARS = 1200  # 单条结果"依据"整块上限(硬闸门)
 SOURCES_MAX = 5  # 来源条数上限
+# 成稿注入上限:完整成稿也要有界(多任务轮防止消息流膨胀);6000 字 ≈ 一篇完整调研报告
+REPORT_MAX_CHARS = 6000
 
 
 def _brief(value, limit: int = EVIDENCE_ITEM_CHARS) -> str:
@@ -102,7 +106,14 @@ def _render_results(results: list[ResultSummary], with_evidence: bool = False) -
             f" {' '.join(r.key_points)} | 澄清:{clarification} | 执行提示:{warnings}"
         )
         if with_evidence:
-            lines.extend(_render_evidence(r))
+            report = (r.report or "").strip()
+            if report:
+                # 成稿优先(P0):双重截断只对"碎片 evidence"有意义,成稿是模型基于
+                # 完整上下文写好的成品,原样注入;只做总长闸门防多任务轮膨胀
+                lines.append("  成稿:")
+                lines.append(report[:REPORT_MAX_CHARS])
+            else:
+                lines.extend(_render_evidence(r))
     return "\n".join(lines)
 
 
@@ -143,8 +154,20 @@ def answer_node(state: AgentState, llm) -> dict:
         "answer", skills_meta=_skills_meta(), mcp_meta=mcp_meta(),
         sandbox_meta=sandbox_meta(), agents_md=load_agents_md()
     )
-    messages = [SystemMessage(content=system), *state["messages"]]
+    # ---- P4 上下文分层:先 compact(唯一触发点与写回点)再拼装视图(05 §2.2/§2.4) ----
+    cfg = get_settings()
+    digestState = state.get("contextDigest") or {}
+    newDigest = maybeCompact(
+            state["messages"], digestState, llm,
+            cfg.context_budget_chars, cfg.digest_target_chars,
+        )
+    if newDigest is not None:
+        digestState = newDigest
+    messages = assembleView(system, digestState, state["messages"], cfg.long_msg_limit)
     if rendered:
         messages.append(HumanMessage(content=rendered))  # 子结果进消息流,不进系统提示词
     res = _answer_with_memory(llm, messages)
-    return {"messages": [res], "subagent_results": [RESET]}
+    result = {"messages": [res], "subagent_results": [RESET]}
+    if newDigest is not None:
+        result["contextDigest"] = newDigest  # 单点写(05 §六红线)
+    return result

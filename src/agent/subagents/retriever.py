@@ -85,7 +85,7 @@ def build_retriever_graph(llm, search_backend=None) -> CompiledStateGraph:
                 conclusion="知识库未检索到相关内容",
                 needs_clarification=["知识库中没有与该任务相关的资料"],
             )
-        conclusion, key_points = extract_answer(str(state["react_msgs"][-1].content))
+        conclusion, keyPoints, report = extract_answer(str(state["react_msgs"][-1].content))
         doc_ids = list(dict.fromkeys(h["doc_id"] for h in hits))
         return ResultSummary(
             agent="retriever",
@@ -93,9 +93,10 @@ def build_retriever_graph(llm, search_backend=None) -> CompiledStateGraph:
             task=contract.task,
             status="success",
             conclusion=conclusion,
-            key_points=key_points,
+            key_points=keyPoints,
             data={"hits": hits},
             sources=doc_ids[:10],
+            report=report,
         )
 
     return build_react_subgraph(

@@ -9,7 +9,7 @@
 |---|---|
 | 了解项目是什么、卖点在哪 | [README](../README.md)、[design/DESIGN.md](design/DESIGN.md)(方案定稿)、personal/(简历与演示) |
 | 动手写代码(进度与顺序) | [dev/TODO.md](dev/TODO.md) → [dev/ROADMAP.md](dev/ROADMAP.md)(进度唯一事实源) → [dev/NN-xxx/DEV.md](dev/)(模块开发文档) |
-| 看现行模块方案(唯一口径) | [new_module/rag_0.1/](new_module/rag_0.1/)、[new_module/plan_0.1/](new_module/plan_0.1/)、[new_module/agent_opt_0.1/](new_module/agent_opt_0.1/)(智能体框架优化:00 报告 + 01~03 方案 + TODO) |
+| 看现行模块方案(唯一口径) | [new_module/rag_0.1/](new_module/rag_0.1/)、[new_module/plan_0.1/](new_module/plan_0.1/)、[new_module/agent_opt_0.1/](new_module/agent_opt_0.1/)(智能体框架优化:00 报告 + 01~03、05 方案 + TODO) |
 | 查某个设计为什么这样定 | [adr/](adr/)(0001~0012,**编号被 src 代码注释引用,文件不可改名**) |
 | 排查报错 / 避免重复踩坑 | [troubleshooting/](troubleshooting/)(现象/根因/解决,按模块组织) |
 | 学 RAG 全链路 / 备面试 | [guide/rag/](guide/rag/)(rag_v01 讲解 9 篇 + interview 面试 6 篇,两级索引) |

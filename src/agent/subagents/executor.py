@@ -149,15 +149,16 @@ def build_executor_graph(llm, tools: list | None = None) -> CompiledStateGraph:
                 conclusion="执行轮数达上限,返回当前进度",
                 warnings=["达到工具调用轮数上限,任务可能未完成", *effects],
             )
-        conclusion, key_points = extract_answer(str(state["react_msgs"][-1].content))
+        conclusion, keyPoints, report = extract_answer(str(state["react_msgs"][-1].content))
         return ResultSummary(
             agent="executor",
             task_id=task_id,
             task=contract.task,
             status="success",
             conclusion=conclusion,
-            key_points=key_points,
+            key_points=keyPoints,
             warnings=effects,
+            report=report,
         )
 
     return build_react_subgraph(

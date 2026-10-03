@@ -29,6 +29,13 @@ from agent.contracts import ResultSummary, SubgraphContract
 
 CONTEXT_BUDGET_CHARS = 16_000  # 子图私有消息字符预算(中文≈1 字/token),超限注入收尾提示(T3 闸门)
 WRAPUP_HINT = "注意:上下文已接近预算上限,请基于现有信息尽快收尾,不要再发起新的工具调用。"
+REPORT_MIN_CHARS = 80  # 成稿低于此长度视为没写真稿(一句话交差/照抄要点)
+
+RETRY_PROMPT = (
+    "你的上一次收尾不合规:{reason}。请基于以上全部工作记录重新输出收尾 JSON"
+    "(conclusion / key_points / report),其中 report 必须是完整成稿:"
+    "结论、依据、来源齐全,展开论述,禁止照抄 key_points。不要输出 JSON 之外的任何文字。"
+)
 
 
 class ReactState(TypedDict):
@@ -55,10 +62,11 @@ def _msgs_over_budget(messages: list) -> bool:
     return sum(len(getattr(m, "content", "") or "") for m in messages) > CONTEXT_BUDGET_CHARS
 
 
-def extract_answer(text: str) -> tuple[str, list[str]]:
-    """从 agent 最终消息提取(结论, 要点):优先解析模型自发的摘要 JSON,失败则折叠
-    空白后截断原文(提示词已要求自然语言收尾,此处兜底 markdown 伪 schema 等形态)。"""
-    fallback = " ".join((text or "").split())[:100] or "(无文本输出)"
+def extract_answer(text: str) -> tuple[str, list[str], str]:
+    """从 agent 最终消息提取(结论, 要点, 成稿):优先解析模型自发的摘要 JSON,失败则
+    折叠空白后截断原文(提示词已要求自然语言收尾,此处兜底 markdown 伪 schema 等形态)。
+    report 是收尾 JSON 里的完整成稿字段,原样带回不截断——截断是 answer 注入侧的职责。"""
+    fallback = " ".join((text or "").split())[:200] or "(无文本输出)"
     s = text.strip()
     if s.startswith("```"):  # 剥 markdown 围栏
         s = s[3:].lstrip()
@@ -70,11 +78,23 @@ def extract_answer(text: str) -> tuple[str, list[str]]:
     try:
         obj = json.loads(s)
     except ValueError:
-        return fallback, []
+        return fallback, [], ""
     if isinstance(obj, dict) and isinstance(obj.get("conclusion"), str):
-        key_points = [str(k) for k in obj.get("key_points", []) if str(k).strip()][:5]
-        return obj["conclusion"][:100], key_points
-    return fallback, []
+        keyPoints = [str(k) for k in obj.get("key_points", []) if str(k).strip()][:5]
+        report = str(obj.get("report", "")).strip()
+        return obj["conclusion"][:200], keyPoints, report
+    return fallback, [], ""
+
+
+def validate_report(report: str, keyPoints: list[str]) -> str | None:
+    """成稿校验:合格返回 None,否则返回不合格原因(拼进重试指令)。
+    偷懒检测:report 折叠空白后与 key_points 拼接一致 = 照抄交差。"""
+    if not report or len(report) < REPORT_MIN_CHARS:
+        return "report 缺失或过短"
+    lazy = "".join("".join(keyPoints).split())
+    if lazy and "".join(report.split()) == lazy:
+        return "report 不得照抄 key_points,必须展开成完整成稿"
+    return None
 
 def build_react_subgraph(
     llm,
@@ -139,8 +159,31 @@ def build_react_subgraph(
         return "finalize"
 
     def finalize_node(state: ReactState) -> dict:
-        """收尾:由调用方提供的 build_summary 把消息历史收敛为 ResultSummary。"""
-        return {"subagent_results": [build_summary(state)]}
+        """收尾:build_summary 产出摘要;成稿不合格时用全量上下文重试一次(代码校验,
+        不靠提示词自觉);重试仍不合格清空 report 降级——answer 走 evidence 渲染。"""
+        summary = build_summary(state)
+        if summary.status == "success":
+            reason = validate_report(summary.report, summary.key_points)
+            if reason is not None:
+                retryMsgs = [
+                        *state["react_msgs"],
+                        SystemMessage(RETRY_PROMPT.format(reason=reason)),
+                    ]
+                res = llm.invoke(retryMsgs)
+                conclusion, keyPoints, report = extract_answer(str(res.content))
+                if validate_report(report, keyPoints) is None:
+                    summary = summary.model_copy(
+                            update={
+                                "conclusion": conclusion[:200],
+                                "key_points": keyPoints,
+                                "report": report,
+                            }
+                        )
+                else:
+                    # 重试仍不合格:清空成稿降级——保留原不合格 report 会被 answer 的
+                    # 成稿优先分支当"成稿:"渲染;对齐 §七"重试仍不合格 → report 空串"
+                    summary = summary.model_copy(update={"report": ""})
+        return {"subagent_results": [summary]}
 
     g = StateGraph(ReactState)
     g.add_node("agent", agent_node)

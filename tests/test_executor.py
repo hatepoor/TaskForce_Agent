@@ -103,13 +103,17 @@ def test_success_flow_tool_calls_then_finish(monkeypatch):
             _call("execute_python", {"code": "print(1+1)"}, "c1"),
             _call("write_file", {"filename": "a.txt", "content": "hi"}, "c2"),
         ]),
-        AIMessage("统计完成,总额 2"),
+        # 收尾带合格 report(≥80 字):M1 后 success 收尾不合格会触发 finalize 重试
+        AIMessage('{"conclusion": "统计完成,总额 2", "key_points": ["总额 2"], '
+                  '"report": "任务执行成稿:经 execute_python 对 CSV 逐行求和,总额为 2;'
+                  '脚本一次跑通无报错,结果文件 a.txt 已写入沙箱工作区,关键输出与解读如上。"}'),
     ])
     final = build_executor_graph(llm, tools=_BUILTIN).invoke({"contract": _contract()})
     (summary,) = final["subagent_results"]
     assert summary.agent == "executor"
     assert summary.status == "success"
     assert summary.conclusion == "统计完成,总额 2"
+    assert summary.report.startswith("任务执行成稿")  # 成稿随摘要回传(M1)
     assert any("a.txt" in w for w in summary.warnings)
     assert any("1 段" in w for w in summary.warnings)
 
@@ -134,6 +138,7 @@ def test_partial_when_iteration_limit(monkeypatch):
     assert summary.status == "partial"
     assert any("上限" in w for w in summary.warnings)
     assert any("13 段" in w for w in summary.warnings)
+    assert summary.report == ""  # partial 无成稿(spec §七)
 
 
 def test_gather_tools_builtin_set(monkeypatch):

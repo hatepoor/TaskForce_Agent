@@ -97,7 +97,11 @@ def test_success_flow_parses_json_answer():
     store = FakeStore({"昆玉河": [_row()]})
     llm = FakeReActLLM(rounds=[
         AIMessage(content="", tool_calls=[_call("昆玉河")]),
-        AIMessage('```json\n{"conclusion": "沿岸有玉渊潭公园", "key_points": ["玉渊潭"]}\n```'),
+        # 收尾带合格 report(≥80 字):M1 后 success 收尾不合格会触发 finalize 重试
+        AIMessage('```json\n{"conclusion": "沿岸有玉渊潭公园", "key_points": ["玉渊潭"], '
+                  '"report": "昆玉河沿岸的公园以玉渊潭为代表,东接钓鱼台,西连紫竹院一带,'
+                  '滨水步道贯穿全线;春秋两季水面开阔、柳堤成荫,是市民沿河散步的主要去处,'
+                  '以上表述均可在命中条目中溯源。"}\n```'),
     ])
     final = _graph(llm, store).invoke({"contract": _contract()})
     (summary,) = final["subagent_results"]
@@ -105,6 +109,7 @@ def test_success_flow_parses_json_answer():
     assert summary.status == "success"
     assert summary.conclusion == "沿岸有玉渊潭公园"
     assert summary.key_points == ["玉渊潭"]
+    assert summary.report.startswith("昆玉河沿岸的公园")  # 成稿随摘要回传(M1)
     assert summary.task == "查知识库里的昆玉河"
     assert summary.data["hits"][0]["doc_id"] == "d1"
     assert summary.sources == ["d1"]
@@ -155,6 +160,7 @@ def test_iteration_cap_partial():
     assert summary.status == "partial"
     assert summary.warnings
     assert "上限" in summary.warnings[0]
+    assert summary.report == ""  # partial 无成稿(spec §七)
 
 
 def test_tool_error_does_not_crash():
@@ -171,7 +177,11 @@ def test_node_trace():
     store = FakeStore({"q": [_row()]})
     llm = FakeReActLLM(rounds=[
         AIMessage(content="", tool_calls=[_call("q")]),
-        AIMessage("命中了玉渊潭公园。"),
+        # 收尾带合格 report:避免触发 finalize 重试(会多出一帧 invoke,污染 counts 断言)
+        AIMessage('{"conclusion": "已有足够信息", "key_points": ["a"], '
+                  '"report": "基于上述命中整理的完整成稿正文:先给出结论,再分点展开论述,每条要点都'
+                  '附带依据与口径说明,并在结尾统一注明来源、出处与时点信息,整体篇幅足以通过成稿校验'
+                  '的下限要求,并非要点清单的照抄。"}'),
     ])
     names = [
         next(iter(ev))
@@ -192,11 +202,13 @@ def test_collect_hits_dedup_and_skip_non_json():
 
 
 def test_extract_answer_variants():
-    """_extract_answer:围栏 JSON / 裸 JSON / 普通文本 / 空文本四分支。"""
-    assert extract_answer('```json\n{"conclusion": "A", "key_points": ["k"]}\n```') == ("A", ["k"])
+    """_extract_answer:围栏 JSON / 裸 JSON / 普通文本 / 空文本四分支(三元组,P0 成稿回传)。"""
+    assert extract_answer(
+            '```json\n{"conclusion": "A", "key_points": ["k"]}\n```'
+            ) == ("A", ["k"], "")
     assert extract_answer('{"conclusion": "B"}')[0] == "B"
-    assert extract_answer("普通散文回答。") == ("普通散文回答。", [])
-    assert extract_answer("") == ("(无文本输出)", [])
-    # 超长结论截断到 100
+    assert extract_answer("普通散文回答。") == ("普通散文回答。", [], "")
+    assert extract_answer("") == ("(无文本输出)", [], "")
+    # 超长结论截断到 200(100→200:契约/代码/提示词三处同步)
     long = extract_answer("长" * 300)[0]
-    assert len(long) == 100
+    assert len(long) == 200

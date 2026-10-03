@@ -30,7 +30,7 @@ class ResultSummary(BaseModel):
     status: Literal["success", "partial", "need_clarification", "failed"]
 
     conclusion: str = Field(
-        max_length=100,
+        max_length=200,
         description="一句话直接结论"
     )
 
@@ -42,6 +42,12 @@ class ResultSummary(BaseModel):
     data: dict = Field(
         default_factory=dict,
         description="各智能体约定的结构化数据"
+    )
+
+    report: str = Field(
+        default="",
+        description="完整成稿(markdown):子图收尾 JSON 的 report 字段原样带回,"
+        "answer 汇总优先消费;空串表示该子图未产出成稿(旧协议回退 evidence 渲染)"
     )
 
     sources: list[str] = Field(

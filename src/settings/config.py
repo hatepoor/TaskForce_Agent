@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     anysearch_api_key: str = ""  # 搜索 API 可选;留空走匿名调用(按 IP 限流)
     log_level: str = "INFO"
 
+    # 上下文分层(P4,agent_opt_0.1/05):主图视图层预算;默认按 128k 窗口留提前量,
+    # 换更小窗口的模型在 .env 覆盖
+    context_budget_chars: int = 60000   # 活跃段字符预算(answer 触发 compact 的阈值线)
+    digest_target_chars: int = 2000     # 摘要目标长度(增量摘要的软上限)
+    long_msg_limit: int = 8000          # 单条消息视图层确定性截断线(缓存安全)
+
 
 def assert_ready(s: Settings) -> None:
     """校验必填配置齐全,缺失时抛出带变量名清单的 RuntimeError。"""
