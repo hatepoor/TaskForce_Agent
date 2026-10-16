@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { listThreadMessages, listThreadsMeta, removeThread } from '@/api/chat'
-import { readCurrentThreadId } from '@/composables/useLocalStore'
+import { CURRENT_THREAD_KEY, readCurrentThreadId } from '@/composables/useLocalStore'
 import { useUiStore } from '@/stores/ui'
 import { createFakeStorage } from '@/test-utils/fakeStorage'
 import type { ThreadMessagesResponse, ThreadMetaResponse } from '@/types/chat'
@@ -47,6 +47,21 @@ beforeEach(() => {
   mockMeta.mockReset()
   mockMessages.mockReset()
   mockRemoveThread.mockReset()
+})
+
+describe('会话身份初始化', () => {
+  it('本地无缓存时: 新生成的 id 立即落盘(重载后可恢复)', () => {
+    const chat = useChatStore()
+
+    expect(readCurrentThreadId()).toBe(chat.currentThreadId)
+  })
+
+  it('本地已有缓存时沿用旧 id', () => {
+    localStorage.setItem(CURRENT_THREAD_KEY, A)
+    const chat = useChatStore()
+
+    expect(chat.currentThreadId).toBe(A)
+  })
 })
 
 describe('loadThreads', () => {

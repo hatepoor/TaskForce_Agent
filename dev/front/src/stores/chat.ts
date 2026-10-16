@@ -84,7 +84,11 @@ export const useChatStore = defineStore('chat', () => {
   // ---- 会话身份 ----
   const threadMeta = local.state
   const threads = ref<ThreadMetaRow[]>([])
-  const currentThreadId = ref<string>(readCurrentThreadId() ?? newThreadId())
+  // 首次生成的 id 立即落盘:只靠 setCurrent 写盘的话, "打开即聊、从未切过会话"时
+  // localStorage 恒为空 —— 点外链返回触发页面重载后会落到新建的空会话(实测坑)。
+  const initialThreadId = readCurrentThreadId() ?? newThreadId()
+  writeCurrentThreadId(initialThreadId)
+  const currentThreadId = ref<string>(initialThreadId)
   const loadingThreads = ref(false)
   const threadsError = ref('')
 

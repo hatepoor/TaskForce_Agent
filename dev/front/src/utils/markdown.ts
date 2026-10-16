@@ -12,6 +12,16 @@ const cache = new Map<string, string>()
 
 marked.setOptions({ gfm: true, breaks: true })
 
+// 外链一律新开标签页:同页跳转会把整个 SPA 带走(返回时聊天内容只在内存, 体感是"聊的全没了")。
+// 只对 http(s) 外链加, 站内锚点(#...)保持同页跳转。
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  const href = node.getAttribute('href') ?? ''
+  if (node.tagName === 'A' && /^https?:/i.test(href)) {
+    node.setAttribute('target', '_blank')
+    node.setAttribute('rel', 'noopener noreferrer')
+  }
+})
+
 export function renderMarkdown(src: string): string {
   const hit = cache.get(src)
   if (hit !== undefined) {
