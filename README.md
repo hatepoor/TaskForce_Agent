@@ -102,7 +102,7 @@ src/
 ├── api/        # FastAPI 七 router(chat/models/knowledge/memory/skills/mcp/health)
 └── cli/        # REPL(context/streaming/commands)
 dev/front/      # Web 工作台(Vue 3 + Vite + Pinia,独立工程:不进 uv / hatchling / pytest)
-docs/           # 设计文档 / ADR / 开发文档 / 格式违规底单 / 演示剧本
+docs/           # 文档体系(索引见 docs/index.md:概览 / 决策与方案 / 开发过程 / 排障 / 讲解 / 前端 / 个人素材)
 BACKEND.md      # 产品内智能体运行时背景(用户背景 / 全局指令 / 各智能体人设)
 ```
 
@@ -138,4 +138,4 @@ plan-and-execute(ADR-0012):**计划生成用 LLM、计划推进用确定性代�
 | 动态工具选择 | 工具集固定且小,白名单预筛已足够 |
 | 敏感信息打码 | 单用户本地,无多租户泄露面 |
 
-详细设计见 [docs/design/DESIGN.md](docs/design/DESIGN.md);演示剧本见 [docs/personal/demo-scripts.md](docs/personal/demo-scripts.md);前端设计与开发文档见 [dev/front/docs/](dev/front/docs/)。
+详细设计见 [docs/20-决策与方案/design/DESIGN-1-定位与多智能体.md](docs/20-决策与方案/design/DESIGN-1-定位与多智能体.md);演示剧本见 [docs/70-个人素材/demo-scripts.md](docs/70-个人素材/demo-scripts.md);前端设计与开发文档见 [docs/60-前端文档/](docs/60-前端文档)。

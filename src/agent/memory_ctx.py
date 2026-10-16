@@ -1,6 +1,6 @@
 """主智能体共享上下文:agents.md 权威背景(固定 system)+ 长期记忆工具(memory-as-tool, ADR-0011)。
 
-架构评审(docs/design/ARCH-REVIEW / ADR-0011)落地:
+架构评审(docs/99-历史存档/ARCH-REVIEW.md / ADR-0011)落地:
 - agents.md:构建期读入并 lru_cache 缓存(字节级稳定,进固定 system),不再每轮读盘;
 - 长期记忆:封装为 memory_search / store_memory 两个 @tool(同 tools/rag_0.1/kb_search 模式),
   由主智能体(answer 侧)判断需要时按需调用,结果以 ToolMessage 进消息流;

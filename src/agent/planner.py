@@ -8,7 +8,7 @@
 
     拆成两个节点是硬约束:interrupt 的 resume 会让节点整体重跑,若把"调 LLM 生成计划"
     和"挂起确认"放同一节点,resume 后会再调一次 LLM(温度 0.7,计划漂移),见
-    docs/new_module/plan_0.1/02 与 ADR-0012。
+    docs/20-决策与方案/modules/plan_0.1/02-规划与确认节点.md 与 ADR-0012。
 
 使用位置:
     - agent/build.py:build_graph 挂两节点(plan_draft -> plan_confirm 静态边);

@@ -58,7 +58,7 @@ def contract_message(contract: SubgraphContract) -> str:
     return "\n".join(parts)
 
 def _msgs_over_budget(messages: list) -> bool:
-    """私有消息总字符数是否越过预算(上下文膨胀闸门,docs/design/PROMPT-DESIGN §2.5-3)。"""
+    """私有消息总字符数是否越过预算(上下文膨胀闸门,docs/20-决策与方案/design/PROMPT-DESIGN.md §2.5-3)。"""
     return sum(len(getattr(m, "content", "") or "") for m in messages) > CONTEXT_BUDGET_CHARS
 
 

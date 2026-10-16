@@ -92,7 +92,7 @@ def _render_evidence(r: ResultSummary) -> list[str]:
 
 
 def _render_results(results: list[ResultSummary], with_evidence: bool = False) -> str:
-    """docs/design/PROMPT-DESIGN §1.3:子结果渲染为固定三键格式,不原文拼接。
+    """docs/20-决策与方案/design/PROMPT-DESIGN.md §1.3:子结果渲染为固定三键格式,不原文拼接。
 
     with_evidence=True 追加"依据/来源"正文——**只有 answer 汇总时需要**;
     supervisor 的回收提示保持精简(路由只看决策字段,不必把检索正文塞进每轮路由)。

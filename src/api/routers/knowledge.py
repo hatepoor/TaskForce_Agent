@@ -6,7 +6,7 @@
 `rag_v01.upload/list_docs/delete_doc` facade,本路由只做 HTTP 状态码与响应形状的纯渲染;
 CLI `/kb` 调同一 facade(CLI 上传从此同受 20MB 上限)。
 
-**与旧契约的两处差异**(dev/front/docs/API-CONTRACT.md §2.3):
+**与旧契约的两处差异**(docs/60-前端文档/API-CONTRACT/02-端点-知识库.md §2.3):
 1. `doc_id` 是**内容寻址**的(文件字节的 sha256 前 16 位),重复上传必然同 id →
    `created: false` 据此判定。
 2. 新内核没有"上传时间"概念, `created_at` 恒为 `null`;前端 `fmtDateTime` 对 null 返回空串。

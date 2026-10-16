@@ -9,7 +9,7 @@
     digest 与水位存 AgentState.contextDigest = {"digest": str, "uptoId": str},
     随 checkpoint 持久化、可再生(从 messages 全量层重摘即可)。
 
-红线(docs/new_module/agent_opt_0.1/05-上下文分层.md §六):
+红线(docs/20-决策与方案/modules/agent_opt_0.1/05-上下文分层.md §六):
     绝不删改 messages;digest 绝不写进 messages channel;水位用 message id 对齐;
     compact 只在 answer 触发(supervisor 只消费);不感知子图。
 
