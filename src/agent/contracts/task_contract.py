@@ -21,6 +21,7 @@ class TaskContract(BaseModel):
     )
 
     user_utterance: str = Field(
+        
         description="用户原话(意图锚点,防重构失真)"
     )
 

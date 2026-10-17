@@ -7,6 +7,7 @@ import AppButton from '@/components/common/AppButton.vue'
 import { useChatStream } from '@/composables/useChatStream'
 import { useChatStore } from '@/stores/chat'
 import type { InterruptItem } from '@/types/chat'
+import { renderMarkdown } from '@/utils/markdown'
 import { fmtClock } from '@/utils/time'
 
 const props = defineProps<{ item: InterruptItem }>()
@@ -17,6 +18,7 @@ const root = ref<HTMLElement | null>(null)
 const ignoreBtn = ref<InstanceType<typeof AppButton> | null>(null)
 
 const pendingState = computed(() => props.item.status === 'waiting' || props.item.status === 'submitting')
+const proposalHtml = computed(() => renderMarkdown(props.item.text))
 
 async function decide(approved: boolean): Promise<void> {
   if (props.item.status !== 'waiting' || chat.isStreaming) return
@@ -40,7 +42,8 @@ onMounted(() => {
     <template v-if="pendingState">
       <p class="mem__title">记忆写入确认</p>
       <p class="mem__lead">将写入长期记忆(仅存于你本地的 pgvector):</p>
-      <blockquote class="mem__quote" data-testid="memory-proposal">{{ item.text }}</blockquote>
+      <!-- eslint-disable-next-line vue/no-v-html — 内容已经 DOMPurify 清洗 -->
+      <blockquote class="mem__quote" data-testid="memory-proposal" v-html="proposalHtml" />
 
       <div class="mem__foot">
         <span class="mem__source">来源:本轮对话自动提案</span>
@@ -110,8 +113,25 @@ onMounted(() => {
   background: var(--bg-input);
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
   font-size: var(--fs-lg);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.mem__quote :deep(p) {
+  margin: 0 0 var(--sp-2);
+}
+
+.mem__quote :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.mem__quote :deep(ul),
+.mem__quote :deep(ol) {
+  margin: var(--sp-2) 0;
+  padding-left: var(--sp-4);
+}
+
+.mem__quote :deep(li + li) {
+  margin-top: var(--sp-1);
 }
 
 .mem__foot {

@@ -37,7 +37,11 @@ import json
 import time
 from functools import lru_cache
 
-from e2b.exceptions import TimeoutException
+from e2b.exceptions import (
+    FileNotFoundException,
+    SandboxNotFoundException,
+    TimeoutException,
+)
 from e2b_code_interpreter import Sandbox
 
 from settings.config import get_settings
@@ -73,7 +77,42 @@ def _sandbox() -> Sandbox:
             api_key=s.e2b_api_key,
             domain=s.e2b_domain,
         )
+        sandbox_meta.cache_clear()  # 实例重建后三态概览要重算,不吃旧的"不可达"缓存
     return _sbx
+
+
+def _drop() -> None:
+    """丢弃失效实例引用:云端已删除时本地对象不可再用。"""
+    global _sbx
+    _sbx = None
+
+
+def _is_missing_sandbox(e: Exception) -> bool:
+    """实例已被云端回收(TTL 到期 / 手动删除)的判据。
+
+    run_code 走 envd 通道,404 被 SDK 映射成基类 NotFoundException(消息含
+    sandbox instance does not exist);控制面操作则抛 SandboxNotFoundException。
+    文件不存在(FileNotFoundException)不是实例失效,不能触发重建。
+    """
+    if isinstance(e, SandboxNotFoundException):
+        return True
+    if isinstance(e, FileNotFoundException):
+        return False
+    text = str(e).lower()
+    return "sandbox" in text and any(
+        k in text for k in ("not found", "does not exist", "deleted")
+    )
+
+
+def _call(fn):
+    """SDK 调用入口:实例已失效则丢弃引用、重建一次再试。"""
+    try:
+        return fn(_sandbox())
+    except Exception as e:
+        if not _is_missing_sandbox(e):
+            raise
+        _drop()
+        return fn(_sandbox())
 
 
 def _kill() -> None:
@@ -96,7 +135,7 @@ def execute_python(code: str, timeout: int = EXEC_TIMEOUT_DEFAULT) -> dict:
         return {"ok": False, "error": _ERR_UNCONFIGURED}
     start = time.monotonic()
     try:
-        ex = _sandbox().run_code(code, timeout=timeout)
+        ex = _call(lambda sbx: sbx.run_code(code, timeout=timeout))
     except TimeoutException as e:
         # 超时映射回旧契约 124,由 LLM 判断语义
         return {"ok": False, "error": f"沙箱执行超时({timeout}s):{e}", "exit_code": 124}
@@ -131,7 +170,7 @@ def write_file(filename: str, content: str) -> dict:
     if not _configured():
         return {"ok": False, "error": _ERR_UNCONFIGURED}
     try:
-        path = _sandbox().files.write(filename, content)
+        path = _call(lambda sbx: sbx.files.write(filename, content))
     except Exception as e:
         return {"ok": False, "error": f"沙箱写入失败:{type(e).__name__}: {e}"}
     return {"ok": True, "path": str(path or filename)}
@@ -142,7 +181,7 @@ def read_file(filename: str) -> dict:
     if not _configured():
         return {"ok": False, "error": _ERR_UNCONFIGURED}
     try:
-        content = _sandbox().files.read(filename)
+        content = _call(lambda sbx: sbx.files.read(filename))
     except Exception as e:
         return {"ok": False, "error": f"沙箱读取失败:{type(e).__name__}: {e}"}
     if isinstance(content, bytes):
@@ -166,7 +205,7 @@ def sandbox_health() -> dict:
     if not _configured():
         return {"ok": False, "error": _ERR_UNCONFIGURED}
     try:
-        _sandbox().run_code("1", timeout=15)
+        _call(lambda sbx: sbx.run_code("1", timeout=15))
     except Exception as e:
         return {"ok": False, "error": f"沙箱不可达:{type(e).__name__}: {e}"}
     return {"status": "ok"}

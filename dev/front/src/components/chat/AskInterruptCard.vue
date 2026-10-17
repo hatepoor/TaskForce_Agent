@@ -7,11 +7,14 @@ import AppButton from '@/components/common/AppButton.vue'
 import { useChatStream } from '@/composables/useChatStream'
 import { useChatStore } from '@/stores/chat'
 import type { InterruptItem } from '@/types/chat'
+import { renderMarkdown } from '@/utils/markdown'
 import { fmtClock } from '@/utils/time'
 
 const props = defineProps<{ item: InterruptItem }>()
 const chat = useChatStore()
 const stream = useChatStream()
+
+const questionHtml = computed(() => renderMarkdown(props.item.text))
 
 const draft = ref('')
 const composing = ref(false)
@@ -49,7 +52,8 @@ onMounted(() => {
   <div ref="root" class="ask" data-testid="interrupt-ask">
     <template v-if="pendingState">
       <p class="ask__title">需要补充信息</p>
-      <p class="ask__question">{{ item.text }}</p>
+      <!-- eslint-disable-next-line vue/no-v-html — 内容已经 DOMPurify 清洗 -->
+      <div class="ask__question" data-testid="ask-question" v-html="questionHtml" />
 
       <textarea
         ref="box"
@@ -112,7 +116,36 @@ onMounted(() => {
 
 .ask__question {
   font-size: var(--fs-lg);
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ask__question :deep(p) {
+  margin: 0 0 var(--sp-2);
+}
+
+.ask__question :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.ask__question :deep(ul),
+.ask__question :deep(ol) {
+  margin: var(--sp-2) 0;
+  padding-left: var(--sp-5);
+}
+
+.ask__question :deep(li + li) {
+  margin-top: var(--sp-1);
+}
+
+.ask__question :deep(code) {
+  padding: 1px 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+}
+
+.ask__question :deep(a) {
   overflow-wrap: anywhere;
 }
 

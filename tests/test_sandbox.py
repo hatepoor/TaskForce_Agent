@@ -141,6 +141,56 @@ def test_execute_timeout_exit_code_124(monkeypatch):
     assert "超时" in r["error"]
 
 
+def test_stale_instance_recreated_and_retried(monkeypatch):
+    """实例被云端回收(TTL 到期/删除):丢弃旧引用、重建一次后重试成功。"""
+    from e2b.exceptions import NotFoundException
+
+    _mock_settings(monkeypatch)
+    stale_calls = []
+
+    class _Stale:
+        def run_code(self, code, **kw):
+            stale_calls.append(code)
+            raise NotFoundException(
+                '{"error":"Not Found","message":'
+                '"The sandbox instance does not exist or has been deleted"}'
+            )
+
+    fresh = _FakeSandbox(_execution(out="2"))
+    boxes = [_Stale(), fresh]
+    monkeypatch.setattr(client, "_sandbox", lambda: boxes.pop(0))
+
+    r = execute_python("print(1+1)")
+    assert r["ok"] is True and r["stdout"] == "2"
+    assert stale_calls == ["print(1+1)"]
+    assert len(fresh.exec_calls) == 1
+
+
+def test_missing_file_does_not_recreate(monkeypatch):
+    """文件不存在(FileNotFoundException)不是实例失效,不得触发重建。"""
+    from e2b.exceptions import FileNotFoundException
+
+    _mock_settings(monkeypatch)
+
+    class _Files:
+        def read(self, path):
+            raise FileNotFoundException(f"File {path} not found in sandbox")
+
+    class _Sandbox:
+        files = _Files()
+
+    created = []
+
+    def _fake_sandbox():
+        created.append(1)
+        return _Sandbox()
+
+    monkeypatch.setattr(client, "_sandbox", _fake_sandbox)
+    r = read_file("nope.txt")
+    assert r["ok"] is False
+    assert len(created) == 1
+
+
 def test_network_error_structured(monkeypatch):
     _mock_settings(monkeypatch)
 

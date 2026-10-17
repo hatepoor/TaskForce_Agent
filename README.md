@@ -8,39 +8,22 @@
 
 | 层 | 选型 |
 |---|---|
-| **编排** | LangGraph 1.x:主图九节点(supervisor 结构化路由 + answer/ask/memory + plan_draft/plan_confirm)+ 3 个 ReAct 子图;`Send` 动态 fan-out、`interrupt` 单点 HITL、Postgres checkpointer / Store |
+| **编排** | LangGraph 1.x:主图九节点(supervisor 结构化路由 + answer/ask/memory + plan_draft/plan_confirm)+ 3 个 ReAct 子图;TaskManager 后台线程池异步派发(`Send` 仅同步备胎)、`interrupt` 单点 HITL、Postgres checkpointer / Store |
 | **模型** | 全部走 **OpenAI 兼容协议**:LLM(火山方舟豆包 / DeepSeek)、Embedding(智谱 / 百炼);base_url / api_key / 模型名可在设置页改,不锁死在代码里 |
 | **后端** | FastAPI(七 router;**全同步 `def` 端点**,由 FastAPI 丢线程池,零 async)+ SSE 同步 generator + Pydantic v2 |
 | **存储** | PostgreSQL + pgvector:会话 checkpoint、长期记忆 Store;知识库检索在 **Milvus**:docling 解析、父子分块、内置 BM25 + 向量双路召回 + RRF 融合(中文分词 jieba) |
-| **工具能力** | 内置文件读写 + 时钟工具 + MCP(stdio / streamable-http 双协议,失败降级)+ Skills 渐进式加载 + AnySearch 联网 + 远程 Docker 沙箱执行 |
+| **工具能力** | 内置文件读写 + 时钟工具 + MCP(stdio / streamable-http 双协议,失败降级)+ Skills 渐进式加载 + AnySearch 联网 + 腾讯云 AGS 沙箱执行(E2B SDK) |
 | **前端** | Vue 3.5 `<script setup>` + TypeScript strict + Vite 7 + Pinia + vue-router(hash)+ **原生 CSS 设计令牌,零 UI 库**;SSE 走 fetch + ReadableStream 手工分帧 |
 | **工程** | uv(依赖与运行)、hatchling(src 七包)、ruff、pytest、vitest / vue-tsc、docker compose |
 
 ## 架构
 
-```mermaid
-flowchart LR
-    subgraph 本地[本地机器]
-        CLI[CLI REPL] -->|build_graph / run_turn<br/>同一套业务层| SUP[主智能体 Supervisor<br/>结构化路由]
-        API[FastAPI · SSE] -->|同一套业务层| SUP
-        SUP -->|复杂调研| PD[plan_draft → plan_confirm<br/>HITL 计划确认]
-        SUP -->|dispatch<br/>异步派发,立即返回| TM[TaskManager<br/>后台线程池]
-        PD -->|按 depends_on 分批派发| TM
-        TM --> SUB[三子智能体<br/>retriever / research / executor<br/>共享 ReAct 骨架]
-        SUB -->|ResultSummary| TM
-        TM -->|完成自动回收推进| SUP
-        RET[retriever] -.->|Milvus 混合检索| MV[(Milvus<br/>BM25 + 向量 RRF)]
-        RES[research] -.->|web_search<br/>搜-评-再搜| AS[AnySearch API]
-        MEM[长期记忆] -.->|memory_search<br/>按需查询| DB[(PostgreSQL<br/>checkpointer + Store)]
-    end
-    subgraph 远程[远程服务器]
-        SB[执行沙箱<br/>自建 Docker 服务]
-    end
-    EXE[executor] -.->|execute_python / 文件读写| SB
-```
+![TaskForce 架构](docs/10-项目概览/assets/taskforce-architecture.svg)
+
+> 可编辑源文件:`docs/10-项目概览/assets/taskforce-architecture.drawio`(draw.io 打开后可改);同目录附导出 PNG。架构决策见 [docs/20-决策与方案/adr/](docs/20-决策与方案/adr/)(0012 = Plan-and-Execute)。
 
 计划执行(plan-and-execute):planner 生成 todolist → 用户 interrupt 确认 → 按 depends_on 分批派发;推进由 supervisor 确定性完成(task_id 对账、失败级联、依赖解锁、收口汇总),不走路由 LLM。
-控制面在本地、**执行面在远程沙箱**:本仓库不内置任何执行环境,只做 `execute_python` 工具接入(HTTP + Bearer)。
+控制面在本地、**执行面在远程沙箱**:本仓库不内置任何执行环境,只做 `execute_python` 工具接入(腾讯云 AGS,E2B SDK)。
 
 ## 功能清单
 
@@ -49,7 +32,7 @@ flowchart LR
 - [x] 异步派发:任务提交后台线程池,派发即返回可继续交互;全批完成自动汇总推送(不阻塞、无需询问)
 - [x] 知识库 RAG:pdf/docx/md 解析(docling)、内容级防重、父子分块、BM25 + 向量混合检索(RRF 融合,Milvus)、切片管理
 - [x] 联网调研:AnySearch API 直连,搜-评-再搜循环,来源引用 + 信息时点标注
-- [x] 沙箱代码执行:远程 Docker 执行 Python + 工作区文件读写
+- [x] 沙箱代码执行:腾讯云 AGS 沙箱(E2B SDK)执行 Python + 工作区文件读写
 - [x] Skills 渐进式加载:元数据注入主智能体,全文由 executor 按需读取
 - [x] MCP 工具接入:stdio(本地)+ streamable-http(远程)双协议,失败降级
 - [x] 长期记忆:memory-as-tool——`memory_search` / `store_memory` 由主智能体按需调用,不做每轮注入
