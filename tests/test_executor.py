@@ -206,3 +206,21 @@ def test_default_path_gathers_tools_exactly_once(monkeypatch):
     monkeypatch.setattr(ex, "_gather_tools", counting)
     build_executor_graph(FakeReActLLM(rounds=[])).invoke({"contract": _contract()})
     assert n["c"] == 1
+
+
+def test_file_tools_describe_sandbox_not_knowledge_base():
+    """工具描述必须让模型看到:file 工具操作沙箱,不是知识库。"""
+    for t in (read_file, write_file, list_files):
+        assert "沙箱" in t.description
+        assert "知识库" in t.description
+
+
+def test_empty_workspace_list_files_points_to_knowledge_base_boundary(monkeypatch):
+    """空工作区不是静默空列表:明确提示知识库文档不在沙箱。"""
+    import tools.tool.files as files_mod
+
+    monkeypatch.setattr(files_mod, "_list_files", lambda: {"ok": True, "files": []})
+    out = files_mod.list_files.invoke({})
+
+    assert "沙箱工作区为空" in out
+    assert "知识库" in out

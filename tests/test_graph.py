@@ -131,6 +131,41 @@ def test_build_contract_fields():
     assert c.output_schema_hint
 
 
+def test_build_contract_passes_upstream_results_to_executor():
+    """executor 看不到知识库:上游子结果的 data/key_points 必须随契约显式传递。"""
+    summary = ResultSummary(
+        agent="retriever",
+        task_id="t1",
+        task="取数",
+        status="success",
+        conclusion="营收 100 亿元",
+        key_points=["营收 100 亿元"],
+        data={"revenue": 100},
+        sources=["a.pdf"],
+    )
+    state = _state(messages=[HumanMessage(content="算一下")])
+    state["subagent_results"] = [summary]
+
+    c = build_contract(Task(agent="executor", task="用 100 计算", reason="计算"), state)
+    upstream = c.input_data["upstream_results"]
+    assert upstream[0]["data"] == {"revenue": 100}
+    assert upstream[0]["key_points"] == ["营收 100 亿元"]
+
+    r = build_contract(Task(agent="retriever", task="继续查", reason="检索"), state)
+    assert r.input_data == {}
+
+
+def test_prompts_lock_executor_sandbox_boundary():
+    """能力边界写进提示词:executor 的 file 工具不是知识库入口。"""
+    sup = load_prompt("supervisor", skills_meta="", agents_md="")
+    executor = load_prompt("subagents/executor", tools_meta="")
+    planner = load_prompt("planner")
+
+    assert "沙箱工作区" in sup and "不是知识库" in sup
+    assert "list_files" in executor and "不是知识库" in executor
+    assert "沙箱工作区" in planner and "executor 步必须拿到原始数据" in planner
+
+
 def test_route_fallback_on_none():
     r = route_node(_state(), FakeStructuredLLM(route=None))
     assert isinstance(r, Command) and r.goto == "answer"

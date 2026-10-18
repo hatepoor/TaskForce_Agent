@@ -14,7 +14,9 @@ error 异常收尾。图与 checkpointer 惰性单例:首次请求才 build(exec
 
 import json
 import queue
+import sys
 import threading
+import time
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -175,6 +177,7 @@ def _get_app():
     if _app is None:
         with _app_lock:
             if _app is None:
+                started = time.perf_counter()
                 settings = get_settings()
                 checkpointer = get_checkpointer(settings.database_url)
                 llm = make_llm(settings)
@@ -182,7 +185,19 @@ def _get_app():
                 tasks = TaskManager(llm)
                 graph = build_graph(llm, checkpointer, tasks=tasks, routeLlm=routeLlm)
                 _app = (graph, checkpointer, UsageTracker(settings), tasks)
+                print(
+                    f"[app] 智能体初始化完成 {time.perf_counter() - started:.2f}s",
+                    file=sys.stderr,
+                )
     return _app
+
+
+def warm_app() -> None:
+    """启动后后台预热图与工具装配,别让第一轮用户消息承担初始化延迟。"""
+    try:
+        _get_app()
+    except Exception as exc:
+        print(f"[app] 智能体预热失败: {type(exc).__name__}: {exc}", file=sys.stderr)
 
 
 @router.post("")

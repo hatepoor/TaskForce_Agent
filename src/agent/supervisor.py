@@ -46,13 +46,33 @@ def _clampTasks(tasks: list[Task])->list[Task]:
     return tasks[:MAX_PARALLEL_SUBAGENTS]
 
 def build_contract(task:Task,state:AgentState)->TaskContract:
-    """会话 -> 任务契约的纯函数:自包含任务 + 用户原话 + 结构化输入 + 输出提示。"""
+    """会话 -> 任务契约的纯函数:自包含任务 + 用户原话 + 结构化输入 + 输出提示。
+
+    executor 看不到知识库/对话:把当前已回收的上游结果压成 input_data.upstream_results,
+    保证计算所需的原始数字随契约显式传递,不依赖 supervisor 是否把数字写进 task。
+    """
     last=state["messages"][-1] if state["messages"] else None
+    inputData:dict={}
+    if task.agent=="executor":
+        upstream=state.get("subagent_results") or []
+        if upstream:
+            inputData["upstream_results"]=[
+                {
+                    "agent": r.agent,
+                    "task": r.task,
+                    "status": r.status,
+                    "conclusion": r.conclusion,
+                    "key_points": r.key_points,
+                    "data": r.data,
+                    "sources": r.sources,
+                }
+                for r in upstream
+            ]
 
     return TaskContract(
         task=task.task,
         user_utterance=last.content if last else "",
-        input_data={},
+        input_data=inputData,
         output_schema_hint="按 ResultSummary 返回:conclusion / key_points / data / sources"
     )
 

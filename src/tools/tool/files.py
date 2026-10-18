@@ -13,17 +13,29 @@ from tools.sandbox.client import write_file as _write_file
 
 @tool
 def read_file(filename: str) -> str:
-    """读取沙箱工作区文件内容。文件不存在时返回错误说明。"""
+    """读取远程沙箱工作区文件内容。
+
+    不是知识库文档:知识库文档由主智能体派 retriever。文件不存在时返回错误说明。
+    """
     return str(_read_file(filename))
 
 
 @tool
 def write_file(filename: str, content: str) -> str:
-    """在沙箱工作区写文件(filename 为相对路径,如 hello.py、data/result.csv)。"""
+    """在远程沙箱工作区写文件(用于报告/中间产物,不是知识库)。
+
+    filename 为相对路径,如 hello.py、data/result.csv。
+    """
     return str(_write_file(filename, content))
 
 
 @tool
 def list_files() -> str:
-    """列出沙箱工作区全部文件名。"""
-    return str(_list_files())
+    """列出远程沙箱工作区全部文件(不含知识库文档;知识库文档不能通过本工具查找)。"""
+    result = _list_files()
+    if result.get("ok") and not result.get("files"):
+        result = {
+            **result,
+            "note": "沙箱工作区为空;知识库文档不在沙箱,禁止用本工具查找知识库",
+        }
+    return str(result)

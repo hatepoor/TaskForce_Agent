@@ -20,7 +20,7 @@ const sentText = ref('')
 const blocked = computed(() => chat.isStreaming || chat.pending !== null)
 const canSend = computed(() => draft.value.trim() !== '' && !blocked.value)
 
-// 首轮惰性装配图 + MCP 可能几十秒:1s 内给"正在初始化智能体…"反馈,防重复点击
+// 首轮装配/路由可能较慢:1s 后给"正在思考…"反馈,防重复点击
 const slowStart = ref(false)
 let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -71,7 +71,7 @@ const failedNoOutput = computed(() => chat.turn?.status === 'error' && !chat.tur
 const hint = computed(() => {
   if (chat.pending?.sub === 'plan') return '请先处理上方的调研计划确认'
   if (chat.pending !== null) return '请先回答上方问题'
-  if (chat.isStreaming) return slowStart.value ? '正在初始化智能体…' : '流式进行中'
+  if (chat.isStreaming) return slowStart.value ? '正在思考…' : '流式进行中'
   if (failedNoOutput.value && sentText.value !== '' && draft.value.trim() === sentText.value) {
     return '上一轮请求失败 · 直接发送会重复上一条,建议点上方「重试」'
   }

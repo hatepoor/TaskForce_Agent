@@ -4,6 +4,7 @@
     uv run uvicorn api.main:app --port 8010
 """
 import sys
+import threading
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -22,6 +23,8 @@ from settings.db.checkpointer import get_checkpointer
 async def lifespan(_app):
     # 预检 DB:checkpointer 连库并幂等建表;连不上启动即报
     get_checkpointer(get_settings().database_url)
+    # 图和 MCP 工具装配较慢:后台预热,避免第一轮消息承担初始化延迟
+    threading.Thread(target=chat.warm_app, name="warm-app", daemon=True).start()
     yield
 
 
