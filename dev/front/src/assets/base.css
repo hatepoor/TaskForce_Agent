@@ -24,7 +24,7 @@ body {
 }
 
 ::selection {
-  background: var(--accent-soft);
+  background: rgba(20, 82, 75, .16);
   color: var(--text-primary);
 }
 
@@ -34,6 +34,14 @@ h3,
 h4,
 p {
   margin: 0;
+}
+
+/* 标题走衬线:页面级标题统一由 .view__title 使用该族(组件自带字号) */
+h1,
+h2 {
+  font-family: var(--font-serif);
+  font-weight: var(--fw-strong);
+  letter-spacing: .01em;
 }
 
 a {
@@ -65,7 +73,7 @@ samp {
   outline-offset: var(--focus-offset);
 }
 
-/* 滚动条:深色细轨 */
+/* 滚动条:纸面细轨 */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

@@ -267,10 +267,10 @@ function onKeydown(e: KeyboardEvent): void {
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-dialog);
   display: flex;
   justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(28, 26, 22, 0.38);
 }
 
 .drawer {

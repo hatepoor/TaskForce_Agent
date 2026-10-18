@@ -79,11 +79,10 @@ const summary = computed(() => {
 
 <style scoped>
 .trail {
-  /* 与 AI 正文对齐(头像 28 + 间距 12):轨迹属于这一轮的 AI 侧,不贴边游离 */
+  /* 轨迹属于这一轮的助手侧:与正文左缘齐平,不再为头像让出缩进 */
   align-self: flex-start;
-  max-width: calc(100% - 40px);
-  margin-left: 40px;
-  font-size: var(--fs-sm);
+  max-width: 100%;
+  font-size: var(--fs-xs);
 }
 
 .trail__head {
@@ -91,10 +90,10 @@ const summary = computed(() => {
   align-items: center;
   gap: var(--sp-2);
   max-width: 100%;
-  padding: var(--sp-1) var(--sp-3);
+  padding: 3px var(--sp-2);
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-full);
+  border-radius: 2px;
   color: var(--text-muted);
   text-align: left;
   cursor: pointer;

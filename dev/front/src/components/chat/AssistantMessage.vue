@@ -6,16 +6,14 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import type { AssistantItem, UsageEvent } from '@/types/chat'
 import { renderMarkdown } from '@/utils/markdown'
 
-import AiAvatar from './AiAvatar.vue'
 import ErrorNotice from './ErrorNotice.vue'
 import UsageBadge from './UsageBadge.vue'
-
 const props = defineProps<{ item: AssistantItem; cumulative?: UsageEvent }>()
 const emit = defineEmits<{ retry: []; copy: [text: string] }>()
 
 const html = computed(() => (props.item.streaming ? '' : renderMarkdown(props.item.text)))
 
-/** 已开轮但还没有任何 token:头像呼吸 + 三点跳动,覆盖装配图/MCP/首字延迟这段等待 */
+/** 已开轮但还没有任何 token:三点跳动,覆盖装配图/MCP/首字延迟这段等待 */
 const thinking = computed(() => props.item.streaming && props.item.text === '')
 
 const canRetry = computed(() => props.item.error !== undefined)
@@ -49,9 +47,10 @@ onUnmounted(() => {
 
 <template>
   <div class="ai" data-testid="assistant-message">
-    <AiAvatar :thinking="thinking" />
-
     <div class="ai__body">
+      <!-- 署名刻:与索引栏品牌同源的竖条 + 衬线小字,标识"这段是模型回复" -->
+      <p class="ai__byline"><span class="ai__mark" aria-hidden="true" />TaskForce</p>
+
       <p v-if="thinking" class="ai__thinking" data-testid="assistant-thinking">
         <span class="dots"><span /><span /><span /></span>
         <span v-if="waiting" class="ai__waiting">正在路由…</span>
@@ -84,13 +83,35 @@ onUnmounted(() => {
 .ai {
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-3);
+  gap: 0;
   min-width: 0;
 }
 
 .ai__body {
   flex: 1;
   min-width: 0;
+}
+
+/* 署名:孔雀小竖条 + 衬线 10px,克制但每轮都在 */
+.ai__byline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--sp-1);
+  font-family: var(--font-serif);
+  font-size: 10.5px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.ai__mark {
+  flex: none;
+  width: 2.5px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--accent);
 }
 
 .ai__thinking {
@@ -175,14 +196,23 @@ onUnmounted(() => {
   margin-top: var(--sp-3);
 }
 
-/* 标题降一档(回答里的 h1 不该比页面标题还大),行距收紧 */
+/* 回答里的标题走衬线、只比正文大一档:不要盖过页面标题 */
 .ai__md :deep(h1),
-.ai__md :deep(h2),
+.ai__md :deep(h2) {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
 .ai__md :deep(h3),
 .ai__md :deep(h4) {
   margin: var(--sp-4) 0 var(--sp-2);
-  font-size: var(--fs-lg);
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
   color: var(--text-primary);
 }

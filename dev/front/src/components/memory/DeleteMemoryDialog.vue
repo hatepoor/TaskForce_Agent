@@ -84,12 +84,12 @@ onBeforeUnmount(() => {
 .mask {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: var(--z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--sp-4);
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(28, 26, 22, 0.38);
 }
 
 .dlg {

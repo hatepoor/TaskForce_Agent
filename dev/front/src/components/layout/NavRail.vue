@@ -1,114 +1,188 @@
 <script setup lang="ts">
-// 导航轨:品牌标记 + 4 个「图标 + 文字」入口 + 底部后端健康状态点。
-// 状态点接真实轮询(与设置页共用同一份数据,见 composables/useHealthPoll.ts):
-// 悬停显示 status/db/sandbox 明细,不再有"假数据"占位。
+// 左索引栏(v2):品牌 + 主导航 + 当前路由的上下文列表 + 底部后端状态。
+// v1 的「图标轨 + 上下文栏」两段合并为一段,上下文内容紧随导航,减少一列割裂。
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
+import ThreadList from '@/components/chat/ThreadList.vue'
 import StatusDot from '@/components/common/StatusDot.vue'
-import { healthTooltip, overallState } from '@/components/settings/healthModel'
+import DocMiniList from '@/components/knowledge/DocMiniList.vue'
+import MemoryMiniList from '@/components/memory/MemoryMiniList.vue'
+import SettingsNav from '@/components/settings/SettingsNav.vue'
+import { healthTooltip, isOkValue, overallState } from '@/components/settings/healthModel'
 import { useHealthPoll } from '@/composables/useHealthPoll'
 
+const emit = defineEmits<{ navigate: [] }>()
+
+const route = useRoute()
 const { data } = useHealthPoll()
+
 const health = computed(() => ({
   state: overallState(data.value),
   tip: healthTooltip(data.value),
 }))
+
+/** 三项自检(status/db/sandbox)中正常项计数;未取到数据时不显示,绝不写死 */
+const healthCount = computed(() => {
+  const h = data.value
+  if (h === null) return ''
+  const ok = [h.status, h.db, h.sandbox].filter(isOkValue).length
+  return `${ok}/3`
+})
+
+type PanelKind = 'chat' | 'knowledge' | 'memory' | 'settings'
+
+const kind = computed<PanelKind>(() => {
+  const path = route.path
+  if (path.startsWith('/knowledge')) return 'knowledge'
+  if (path.startsWith('/memory')) return 'memory'
+  if (path.startsWith('/settings')) return 'settings'
+  return 'chat'
+})
+
+const CTX_TITLE: Record<PanelKind, string> = {
+  chat: '最近会话',
+  knowledge: '文档列表',
+  memory: '记忆条目',
+  settings: '设置分节',
+}
+
+const ctxTitle = computed(() => CTX_TITLE[kind.value])
+const healthLabel = computed(() => {
+  switch (health.value.state) {
+    case 'ok':
+      return '后端在线'
+    case 'warn':
+      return '部分异常'
+    case 'err':
+      return '后端异常'
+    default:
+      return '状态未知'
+  }
+})
+
+function go(): void {
+  emit('navigate')
+}
+
+/** 当前路由是否属于该入口(带参路由如 /chat/:threadId 也命中) */
+function isActive(path: string): boolean {
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
 </script>
 
 <template>
   <nav class="rail" aria-label="主导航">
-    <div class="rail__brand" aria-hidden="true">
-      <svg
-        class="rail__brand-glyph"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-      >
-        <circle cx="6.5" cy="12" r="2.2" />
-        <circle cx="17.5" cy="6.5" r="2.2" />
-        <circle cx="17.5" cy="17.5" r="2.2" />
-        <path d="M8.4 10.9 L15.6 7.4" />
-        <path d="M8.4 13.1 L15.6 16.6" />
-      </svg>
+    <div class="rail__brand">
+      <span class="rail__bar" aria-hidden="true" />
+      <span class="rail__names">
+        <span class="rail__name">TaskForce</span>
+        <span class="rail__sub">投资调研工作台</span>
+      </span>
     </div>
 
-    <RouterLink to="/chat" class="rail__item" aria-label="对话">
-      <svg
-        class="rail__icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
+    <div class="rail__nav">
+      <RouterLink
+        to="/chat"
+        class="rail__link"
+        :class="{ 'rail__link--active': isActive('/chat') }"
+        aria-label="对话"
+        @click="go"
       >
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-      <span class="rail__label">对话</span>
-    </RouterLink>
+        <svg class="rail__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M21 14.6a2 2 0 0 1-2 2H8.2L4 20V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path d="M8.5 9h7M8.5 12.5h4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+        <span>对话</span>
+      </RouterLink>
 
-    <RouterLink to="/knowledge" class="rail__item" aria-label="知识库">
-      <svg
-        class="rail__icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
+      <RouterLink
+        to="/knowledge"
+        class="rail__link"
+        :class="{ 'rail__link--active': isActive('/knowledge') }"
+        aria-label="知识库"
+        @click="go"
       >
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <path d="M14 2v6h6" />
-        <path d="M9 13h6M9 17h6" />
-      </svg>
-      <span class="rail__label">知识库</span>
-    </RouterLink>
+        <svg class="rail__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M13.5 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8.5z"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M13.5 3v5.5H19M8.5 13h7M8.5 16.5h4.5"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>知识库</span>
+      </RouterLink>
 
-    <RouterLink to="/memory" class="rail__item" aria-label="长期记忆">
-      <svg
-        class="rail__icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
+      <RouterLink
+        to="/memory"
+        class="rail__link"
+        :class="{ 'rail__link--active': isActive('/memory') }"
+        aria-label="长期记忆"
+        @click="go"
       >
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-      </svg>
-      <span class="rail__label">记忆</span>
-    </RouterLink>
+        <svg class="rail__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M19 21l-7-5-7 5V5.5A1.5 1.5 0 0 1 6.5 4h11A1.5 1.5 0 0 1 19 5.5z"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linejoin="round"
+          />
+          <path d="M9.5 9h5M9.5 12h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+        <span>长期记忆</span>
+      </RouterLink>
 
-    <RouterLink to="/settings" class="rail__item" aria-label="设置">
-      <svg
-        class="rail__icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
+      <RouterLink
+        to="/settings"
+        class="rail__link"
+        :class="{ 'rail__link--active': isActive('/settings') }"
+        aria-label="设置"
+        @click="go"
       >
-        <path d="M20 7h-9" />
-        <path d="M14 17H5" />
-        <circle cx="17" cy="17" r="3" />
-        <circle cx="7" cy="7" r="3" />
-      </svg>
-      <span class="rail__label">设置</span>
-    </RouterLink>
+        <svg class="rail__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h7M4 17h5M17 7h3M15 17h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          <circle cx="13.5" cy="7" r="2.6" stroke="currentColor" stroke-width="1.7" />
+          <circle cx="11" cy="17" r="2.6" stroke="currentColor" stroke-width="1.7" />
+        </svg>
+        <span>设置</span>
+      </RouterLink>
+    </div>
 
-    <div class="rail__spacer" />
+    <div class="rail__ctx">
+      <p class="rail__ctx-head">{{ ctxTitle }}</p>
+      <div class="rail__ctx-scroll">
+        <ThreadList v-if="kind === 'chat'" />
+        <DocMiniList v-else-if="kind === 'knowledge'" />
+        <MemoryMiniList v-else-if="kind === 'memory'" />
+        <SettingsNav v-else />
+      </div>
+    </div>
 
-    <div class="rail__health" tabindex="0" :aria-label="`后端状态:${health.tip}`" data-testid="rail-health">
-      <StatusDot :state="health.state" />
-      <span class="rail__label">后端</span>
-      <span class="rail__tip">{{ health.tip }}</span>
+    <div
+      class="rail__foot"
+      :title="health.tip"
+      tabindex="0"
+      :aria-label="`后端状态:${health.tip}`"
+      data-testid="rail-health"
+    >
+      <p class="rail__health">
+        <StatusDot :state="health.state" />
+        <span>{{ healthLabel }}</span>
+        <span v-if="healthCount !== ''" class="rail__state">{{ healthCount }}</span>
+      </p>
     </div>
   </nav>
 </template>
@@ -117,117 +191,144 @@ const health = computed(() => ({
 .rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--sp-1);
-  padding: var(--sp-3) 0;
+  gap: var(--sp-5);
   height: 100%;
+  min-height: 0;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
   background: var(--bg-panel);
   border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
 }
 
-/* 品牌标记:与 AI 头像同一套三点连线语义,给导航轨一个视觉起点 */
+/* ── 品牌 ───────────────────────────────────────────── */
 .rail__brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-bottom: var(--sp-3);
-  border-radius: var(--r-md);
-  background: var(--accent-soft);
-  color: var(--accent);
+  gap: 10px;
+  flex: none;
+  height: 46px;
 }
 
-.rail__brand-glyph {
-  width: 18px;
-  height: 18px;
+.rail__bar {
+  flex: none;
+  width: 3px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--accent);
 }
 
-.rail__item,
-.rail__health {
-  position: relative;
+.rail__names {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 3px;
-  width: 48px;
-  padding: var(--sp-2) 0;
-  border-radius: var(--r-md);
+  min-width: 0;
+}
+
+.rail__name {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: var(--fw-strong);
+  line-height: 28px;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.rail__sub {
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+/* ── 导航 ───────────────────────────────────────────── */
+.rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+}
+
+.rail__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
   color: var(--text-secondary);
-  /* 导航图标禁用文本选区(UI-DESIGN §6.3) */
+  font-size: 13.5px;
   user-select: none;
   transition:
     background var(--t-fast),
     color var(--t-fast);
 }
 
-.rail__item:hover,
-.rail__health:hover {
+.rail__link:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-/* 当前项:图标着 accent + 淡底(左侧 2px 竖条保留为"定位到导航轨左缘"的标记) */
-.rail__item.router-link-active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.rail__item.router-link-active::before {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  border-radius: var(--r-full);
-  background: var(--accent);
+.rail__link--active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  font-weight: var(--fw-medium);
 }
 
 .rail__icon {
-  width: 20px;
-  height: 20px;
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 
-.rail__label {
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.02em;
-}
-
-.rail__item.router-link-active .rail__label {
-  color: var(--accent);
-}
-
-.rail__spacer {
+/* ── 上下文列表 ─────────────────────────────────────── */
+.rail__ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   flex: 1;
+  min-height: 0;
 }
 
-/* 悬停/聚焦明细 tooltip(状态点本身只有颜色,明细在文案里) */
-.rail__tip {
-  position: absolute;
-  left: calc(100% + var(--sp-2));
-  bottom: 0;
-  z-index: 30;
-  max-width: 320px;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--bg-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  box-shadow: var(--shadow-pop-sm);
+.rail__ctx-head {
+  flex: none;
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.rail__ctx-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-right: -6px;
+  padding-right: 6px;
+}
+
+/* ── 底部状态 ───────────────────────────────────────── */
+.rail__foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.rail__health {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: var(--fw-medium);
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-base);
-  text-align: left;
-  white-space: pre-line;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--t-fast);
 }
 
-.rail__health:hover .rail__tip,
-.rail__health:focus-visible .rail__tip {
-  opacity: 1;
+.rail__state {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-normal);
+  color: var(--text-muted);
 }
 </style>

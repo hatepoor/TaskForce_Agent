@@ -169,7 +169,7 @@ onMounted(() => {
 }
 
 .section__title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
   font-weight: 600;
 }
 

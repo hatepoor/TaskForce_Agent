@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// 全站唯一按钮原语:视图不再另写按钮;键盘焦点环由 base.css 全局提供(UI-DESIGN §5.1)。
-// danger 只用于删除 / 危险操作。
+// 全站唯一按钮原语:视图不再另写按钮;键盘焦点环由 base.css 全局提供。
+// 层级:primary = 墨黑实底(唯一强动作)、ghost = 纸面描边(次级)、danger = 仅文字。
 withDefaults(
   defineProps<{
     variant?: 'primary' | 'ghost' | 'danger'
@@ -23,10 +23,10 @@ withDefaults(
   align-items: center;
   justify-content: center;
   gap: var(--sp-1);
-  height: var(--ctl-h-sm);
+  height: var(--ctl-h);
   padding: 0 var(--sp-3);
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-sm);
@@ -38,9 +38,7 @@ withDefaults(
   transition:
     background var(--t-fast),
     color var(--t-fast),
-    border-color var(--t-fast),
-    box-shadow var(--t-fast),
-    transform var(--t-fast);
+    border-color var(--t-fast);
 }
 
 .btn:active:not(:disabled) {
@@ -57,25 +55,26 @@ withDefaults(
   cursor: not-allowed;
 }
 
+/* 次级:纸面底 + 发丝描边,悬停只加深描边,不改变层级 */
 .btn--ghost {
   border-color: var(--border-strong);
   background: var(--bg-raised);
 }
 
 .btn--ghost:hover:not(:disabled) {
-  background: var(--bg-hover);
   border-color: var(--text-muted);
+  background: var(--bg-raised);
   color: var(--text-primary);
 }
 
+/* 主操作:墨黑实底,全站同一个动作色 */
 .btn--primary {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+  background: var(--text-primary);
+  color: var(--text-inverse);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: #33302a;
 }
 
 .btn--danger {

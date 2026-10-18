@@ -50,6 +50,7 @@ const emit = defineEmits<{ refresh: [] }>()
   flex: 1;
   min-width: 0;
   max-width: 320px;
+  margin-right: auto;
 }
 
 /* 窄屏:计数文案换行优先,过滤框仍可用 */

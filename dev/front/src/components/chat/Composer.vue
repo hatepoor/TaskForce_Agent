@@ -118,7 +118,8 @@ defineExpose({ fill })
 
 <template>
   <div class="composer">
-    <div class="composer__box">
+    <div class="composer__inner">
+      <div class="composer__box">
       <textarea
         ref="el"
         v-model="draft"
@@ -151,49 +152,51 @@ defineExpose({ fill })
       </AppButton>
     </div>
 
-    <p class="composer__hint" data-testid="composer-hint">{{ hint }}</p>
+      <p class="composer__hint" data-testid="composer-hint">{{ hint }}</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 分隔线全宽贯穿主区,内容仍按阅读栏收窄居中 */
 .composer {
   flex: none;
-  width: min(var(--measure-text), 100%);
-  margin: 0 auto;
-  padding: var(--sp-2) var(--sp-4) var(--sp-4);
+  padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border-subtle);
 }
 
-/* 输入盒是对话页的视觉焦点:浮起一层 + 大圆角 */
+.composer__inner {
+  width: min(var(--measure-text), 100%);
+  margin: 0 auto;
+}
+
+/* 输入盒是对话页的落笔处:纸面底 + 发丝描边,聚焦只换描边色 */
 .composer__box {
   display: flex;
   align-items: flex-end;
   gap: var(--sp-2);
-  padding: var(--sp-3);
+  padding: 10px 12px;
   background: var(--bg-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-pop-sm);
-  transition:
-    border-color var(--t-fast),
-    box-shadow var(--t-fast);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  transition: border-color var(--t-fast);
 }
 
 .composer__box:focus-within {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow-pop-sm), var(--focus-glow);
+  border-color: var(--border-focus);
 }
 
 .composer__input {
   flex: 1;
-  min-height: 26px;
+  min-height: 24px;
   max-height: 160px;
-  padding: 3px var(--sp-1) 0;
+  padding: 4px 2px 0;
   background: transparent;
   border: none;
   outline: none;
   resize: none;
   font-size: var(--fs-lg);
-  line-height: var(--lh-base);
+  line-height: var(--lh-body);
   overflow-y: auto;
 }
 
@@ -208,14 +211,14 @@ defineExpose({ fill })
 .composer__action {
   flex: none;
   height: var(--ctl-h);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-sm);
 }
 
 .composer__hint {
   margin-top: var(--sp-2);
-  padding: 0 var(--sp-1);
+  padding: 0 2px;
   color: var(--text-muted);
   font-size: var(--fs-xs);
-  text-align: center;
+  text-align: left;
 }
 </style>

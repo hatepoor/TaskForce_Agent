@@ -125,7 +125,10 @@ onBeforeUnmount(() => {
 <template>
   <section class="view" data-testid="knowledge-view">
     <header class="view__head">
-      <h1 class="view__title">知识库</h1>
+      <div class="view__titles">
+        <h1 class="view__title">知识库</h1>
+        <p class="view__lead">docling 解析 · 父子分块 · Milvus 混合检索</p>
+      </div>
       <AppButton :disabled="loading" data-testid="docs-refresh" @click="load()">刷新</AppButton>
     </header>
 
@@ -169,9 +172,24 @@ onBeforeUnmount(() => {
   gap: var(--sp-3);
 }
 
+.view__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .view__title {
-  font-size: var(--fs-xl);
+  font-family: var(--font-serif);
+  font-size: 24px;
   font-weight: var(--fw-strong);
+  line-height: var(--lh-tight);
   letter-spacing: 0.01em;
+}
+
+.view__lead {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 </style>

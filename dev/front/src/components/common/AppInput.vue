@@ -27,9 +27,9 @@ withDefaults(
   width: 100%;
   height: var(--ctl-h);
   padding: 0 var(--sp-3);
-  background: var(--bg-input);
+  background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   color: var(--text-primary);
   font-size: var(--fs-md);
   transition:

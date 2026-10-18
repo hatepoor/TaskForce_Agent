@@ -61,14 +61,14 @@ const idText = computed(() => shortDocId(props.doc.doc_id))
   background: var(--bg-hover);
 }
 
-/* 新入库行 2s 高亮(UI-DESIGN §4.1) */
+/* 新入库行 2s 高亮:黄铜底,与"新增"语义一致 */
 .row--hl,
 .row--hl:hover {
-  background: var(--accent-soft);
+  background: var(--brass-soft);
 }
 
 .row__cell {
-  padding: 10px var(--sp-4);
+  padding: 13px var(--sp-4);
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--fs-sm);
   vertical-align: middle;
@@ -83,15 +83,17 @@ const idText = computed(() => shortDocId(props.doc.doc_id))
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
 }
 
 .row__id {
   padding: 0;
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: var(--fs-sm);
+  font-size: 10.5px;
   /* id 必须可选中(UI-DESIGN §6.3) */
   user-select: text;
   cursor: pointer;
@@ -103,13 +105,16 @@ const idText = computed(() => shortDocId(props.doc.doc_id))
 
 .row__time {
   color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
   white-space: nowrap;
 }
 
 .row__num {
   text-align: right;
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
 }
 
 .row__ops {

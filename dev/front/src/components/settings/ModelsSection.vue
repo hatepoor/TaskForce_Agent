@@ -170,6 +170,11 @@ function onResetGroup(groupKey: string): void {
   font-size: var(--fs-xs);
 }
 
+/* 动作按钮(撤销/保存)统一推到右缘:meta 时有时无,不能靠它占位 */
+.section__head > .btn:first-of-type {
+  margin-left: auto;
+}
+
 .section__error {
   padding: var(--sp-2) var(--sp-3);
   background: var(--danger-soft);

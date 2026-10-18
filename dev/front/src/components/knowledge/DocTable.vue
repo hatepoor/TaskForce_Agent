@@ -81,6 +81,8 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  /* 表格 min-width 640:容器窄于表格就横向滚动,不按视口宽度猜(索引栏宽度可变) */
+  overflow-x: auto;
 }
 
 .docs__error {
@@ -110,38 +112,28 @@ const emit = defineEmits<{
   font-size: var(--fs-sm);
 }
 
-/* 表格装进卡片:白底 + 轻影,与页面其他卡片同一语言;窄屏横向滚动 */
+/* 表格是"档案册":纸面底 + 发丝格线,不做卡片阴影;窄屏横向滚动 */
 .docs__table {
   width: 100%;
   min-width: 640px;
   border-collapse: collapse;
-  /* 固定列宽:文件名省略号与数字右对齐才稳(UI-DESIGN §5.1) */
+  /* 固定列宽:文件名省略号与数字右对齐才稳 */
   table-layout: fixed;
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: 2px;
 }
 
 .docs__table th {
-  padding: 10px var(--sp-4);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-panel);
+  padding: 9px var(--sp-4);
+  border-bottom: 1px solid var(--border-strong);
+  background: transparent;
   color: var(--text-muted);
-  font-size: var(--fs-xs);
+  font-size: 10px;
   font-weight: var(--fw-medium);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
   text-align: left;
   white-space: nowrap;
-}
-
-/* 表头两角跟随卡片圆角 */
-.docs__table th:first-child {
-  border-top-left-radius: var(--r-lg);
-}
-
-.docs__table th:last-child {
-  border-top-right-radius: var(--r-lg);
 }
 
 .docs__num,
@@ -150,11 +142,11 @@ const emit = defineEmits<{
 }
 
 .docs__col-id {
-  width: 120px;
+  width: 130px;
 }
 
 .docs__col-time {
-  width: 104px;
+  width: 120px;
 }
 
 .docs__col-num {
@@ -162,13 +154,6 @@ const emit = defineEmits<{
 }
 
 .docs__col-ops {
-  width: 152px;
-}
-
-/* 窄屏:表格外层允许横向滚动,不挤坏版式 */
-@media (max-width: 720px) {
-  .docs {
-    overflow-x: auto;
-  }
+  width: 140px;
 }
 </style>

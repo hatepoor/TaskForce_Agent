@@ -61,10 +61,10 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
   align-items: flex-start;
   gap: var(--sp-2);
   width: 100%;
-  padding: var(--sp-2) 22px var(--sp-2) var(--sp-1);
+  padding: 8px 22px 8px 10px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   text-align: left;
   cursor: pointer;
   transition:
@@ -76,17 +76,18 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
   background: var(--bg-hover);
 }
 
+/* 当前会话:纸面卡片 + 发丝描边,比整行染色更克制 */
 .session__btn--active {
-  background: var(--accent-soft);
+  background: var(--bg-raised);
   border-color: var(--border-strong);
 }
 
 /* 圆点只在当前会话显形:其余行留白对齐,避免一列灰点变成噪点 */
 .session__dot {
   flex: none;
-  width: 6px;
-  height: 6px;
-  margin: 6px 0 0 var(--sp-1);
+  width: 5px;
+  height: 5px;
+  margin: 7px 0 0 2px;
   border-radius: var(--r-full);
   background: transparent;
 }
@@ -98,7 +99,7 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
 .session__body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   min-width: 0;
   flex: 1;
 }
@@ -107,7 +108,8 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-md);
+  font-size: 12.5px;
+  line-height: 18px;
   color: var(--text-secondary);
 }
 
@@ -117,7 +119,7 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
 
 .session__btn--active .session__title {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .session__meta {
@@ -125,11 +127,13 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
   align-items: baseline;
   gap: var(--sp-2);
   min-width: 0;
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 .session__time {
   flex: none;
-  font-size: var(--fs-xs);
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -138,7 +142,7 @@ const shortId = computed(() => props.threadId.replace(/^sess-/, '').slice(0, 8))
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: var(--fs-xs);
+  font-size: 10px;
   color: var(--text-muted);
   opacity: 0;
   transition: opacity var(--t-fast);

@@ -53,7 +53,7 @@ function go(id: string): void {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: var(--sp-2);
+  padding: 8px 10px;
   background: transparent;
   border: none;
   border-radius: var(--r-sm);
@@ -66,16 +66,17 @@ function go(id: string): void {
 }
 
 .nav__item--on {
-  background: var(--accent-soft);
+  background: var(--bg-active);
 }
 
 .nav__label {
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 12.5px;
 }
 
 .nav__item--on .nav__label {
   color: var(--text-primary);
+  font-weight: var(--fw-medium);
 }
 
 .nav__hint {

@@ -153,9 +153,22 @@ async function uploadAt(idx: number): Promise<void> {
       @dragleave.prevent="dragging = false"
       @drop.prevent="onDrop"
     >
-      <p class="up__text">拖拽文件到此处,或</p>
+      <span class="up__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 16V4M7 9l5-5 5 5M5 16v3.5A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V16"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
+      <div class="up__copy">
+        <p class="up__text">拖入 PDF / DOCX / MD 文件,或点击选择</p>
+        <p class="up__hint">单文件 ≤ 20MB · 多选会逐个上传</p>
+      </div>
       <AppButton data-testid="upload-pick" @click="pick()">选择文件</AppButton>
-      <p class="up__hint">支持 pdf / docx / md / txt,单文件 ≤ 20MB;多选会逐个上传</p>
       <input
         ref="inputEl"
         class="up__input"
@@ -190,29 +203,52 @@ async function uploadAt(idx: number): Promise<void> {
 
 .up__drop {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-6) var(--sp-4);
-  border: 1.5px dashed var(--border-strong);
-  border-radius: var(--r-lg);
+  padding: 14px 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
   background: var(--bg-raised);
-  text-align: center;
   transition:
     border-color var(--t-base),
-    background var(--t-base),
-    box-shadow var(--t-base);
+    background var(--t-base);
 }
 
 .up__drop--over {
   border-color: var(--accent);
   background: var(--accent-soft);
-  box-shadow: var(--focus-glow);
+}
+
+/* 图标底:黄铜小方块,和"上传"这个动作绑定 */
+.up__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.up__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.up__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
 }
 
 .up__text {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
 }
 
 .up__hint {
@@ -227,19 +263,18 @@ async function uploadAt(idx: number): Promise<void> {
 .up__queue {
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--r-md);
   overflow: hidden;
 }
 
 .up__queue-title {
-  padding: 10px var(--sp-4);
+  padding: 9px var(--sp-4);
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-panel);
+  background: transparent;
   color: var(--text-muted);
-  font-size: var(--fs-xs);
+  font-size: 10px;
   font-weight: var(--fw-medium);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
 }
 
 .up__list {

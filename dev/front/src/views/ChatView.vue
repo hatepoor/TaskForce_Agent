@@ -97,6 +97,7 @@ async function onCopy(text: string): Promise<void> {
 
     <EmptyState
       v-else-if="chat.items.length === 0"
+      class="view__intro"
       title="企业投资调研助手"
       hint="可以问我:知识库里的研报与公告、需要联网调研的最新动态、需要跑数据验证的计算。复杂调研会先给计划,确认后分批执行。"
     >
@@ -138,21 +139,32 @@ async function onCopy(text: string): Promise<void> {
 
 .view__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--sp-3);
   min-width: 0;
-  padding: var(--sp-4) var(--sp-4) var(--sp-3);
   width: min(var(--measure-text), 100%);
   margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .view__title {
+  font-family: var(--font-serif);
   font-size: var(--fs-xl);
   font-weight: var(--fw-strong);
+  line-height: var(--lh-tight);
+  letter-spacing: 0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 空态占满剩余高度并居中:输入框始终贴在底部,不浮在页面中间 */
+.view__intro {
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+  overflow-y: auto;
 }
 
 .view__tid {
@@ -161,8 +173,12 @@ async function onCopy(text: string): Promise<void> {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 2px 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
   font-family: var(--font-mono);
-  font-size: var(--fs-xs);
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -230,37 +246,34 @@ async function onCopy(text: string): Promise<void> {
 .examples {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   width: 560px;
   max-width: 100%;
-  margin: var(--sp-4) 0 0;
+  margin: var(--sp-3) 0 0;
   padding: 0;
   list-style: none;
 }
 
-/* 示例问句卡片:悬停浮起 + 标签胶囊,比普通列表项更有"可点"的暗示 */
+/* 示例问句:一条纸面便签,悬停只加深描边,不做位移表演 */
 .examples__btn {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: 6px;
   width: 100%;
   padding: var(--sp-3) var(--sp-4);
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--r-sm);
   text-align: left;
   cursor: pointer;
   transition:
     border-color var(--t-fast),
-    box-shadow var(--t-fast),
-    transform var(--t-fast);
+    background var(--t-fast);
 }
 
 .examples__btn:hover {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow-pop-sm);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  background: var(--bg-raised);
 }
 
 .examples__text {
@@ -271,10 +284,10 @@ async function onCopy(text: string): Promise<void> {
 
 .examples__tag {
   align-self: flex-start;
-  padding: 1px var(--sp-2);
-  border-radius: var(--r-full);
-  background: var(--accent-soft);
-  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--brass-soft);
+  color: var(--brass);
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
   line-height: 16px;

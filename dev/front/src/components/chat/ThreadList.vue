@@ -74,6 +74,7 @@ onMounted(() => {
 
     <EmptyState
       v-else-if="rows.length === 0"
+      compact
       title="还没有会话"
       hint="点「新建会话」开始,新会话首次发消息后才会写进后端列表。"
     />
@@ -109,7 +110,7 @@ onMounted(() => {
 .threads {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: 10px;
   min-height: 0;
 }
 
@@ -121,10 +122,10 @@ onMounted(() => {
   padding: 0;
 }
 
-/* 新建会话 = 上下文栏的主操作:占满宽度、主色底,给列表一个视觉起点 */
+/* 新建会话 = 索引栏的主操作:墨黑实底,给列表一个明确起点 */
 .threads__new {
   width: 100%;
-  height: 32px;
+  height: 34px;
 }
 
 .threads__error {

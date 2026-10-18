@@ -75,12 +75,12 @@ onUnmounted(() => {
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: var(--z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--sp-4);
-  background: rgba(15, 17, 21, 0.45);
+  background: rgba(28, 26, 22, 0.38);
   backdrop-filter: blur(2px);
 }
 

@@ -180,8 +180,10 @@ async function confirmDelete(): Promise<void> {
 }
 
 .view__title {
-  font-size: var(--fs-xl);
+  font-family: var(--font-serif);
+  font-size: 24px;
   font-weight: var(--fw-strong);
+  line-height: var(--lh-tight);
   letter-spacing: 0.01em;
 }
 

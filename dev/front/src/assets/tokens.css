@@ -1,50 +1,59 @@
-/* 设计令牌:全文采用 UI-DESIGN.md §5.3(深色默认 + 浅色跟随系统) */
+/* 设计令牌 v2「研究台纸感」:浅色纸底 + 墨黑文本 + 深孔雀主强调 + 黄铜次强调。
+   刻意避开红/绿:这两个颜色只留给涨跌与语义状态,不与品牌色争语义。
+   与 v1 的差异:① 深色优先 → 浅色优先;② 圆角收敛到 3–8px;③ 阴影只作"纸面轻浮"。
+   变量名保持不变,组件无需改引用。 */
 :root {
-  /* ── 背景:四级分层,近黑非纯黑 ───────────────────────── */
-  --bg-base:        #101114;  /* 应用底:对话区 */
-  --bg-panel:       #16181d;  /* 侧栏、导航轨 */
-  --bg-raised:      #1c1f26;  /* 卡片、用户气泡、表格行悬停 */
-  --bg-input:       #1a1d23;  /* 输入框、引用块 */
-  --bg-hover:       #22262e;  /* 通用悬停 */
+  /* ── 背景:纸 → 面板 → 卡片,靠明度差分层 ─────────────── */
+  --bg-base:        #f4f0e6;  /* 应用底:对话画布 */
+  --bg-panel:       #efe9dc;  /* 左索引栏 */
+  --bg-raised:      #fffdf8;  /* 卡片、用户气泡、输入框 */
+  --bg-input:       #f7f2e6;  /* 输入底、代码块 */
+  --bg-hover:       #e7dfcc;  /* 通用悬停 */
+  --bg-active:      #e4dac4;  /* 导航当前项、选中行 */
+  --bg-user:        #eae3d3;  /* 用户消息:比纸略深的暖灰 */
 
-  /* ── 描边:低对比,能省则省 ──────────────────────────── */
-  --border-subtle:  #23262e;
-  --border-strong:  #32363f;
-  --border-focus:   #5b9dff;
+  /* ── 描边:发丝线,能省则省 ──────────────────────────── */
+  --border-subtle:  #e0d8c6;
+  --border-strong:  #c9bea6;
+  --border-focus:   #14524b;
 
   /* ── 文本 ──────────────────────────────────────────── */
-  --text-primary:   #e6e8ec;
-  --text-secondary: #a2a8b4;
-  --text-muted:     #6b7280;
-  --text-inverse:   #0f1115;
+  --text-primary:   #1c1a16;
+  --text-secondary: #575147;
+  --text-muted:     #8c8475;
+  --text-inverse:   #fbf7ec;
 
-  /* ── 强调色:全界面唯一 ─────────────────────────────── */
-  --accent:         #5b9dff;
-  --accent-hover:   #7cb0ff;
-  --accent-soft:    rgba(91, 157, 255, .12);
-  --accent-border:  rgba(91, 157, 255, .38);
+  /* ── 强调色:主深孔雀(稳重、避开涨跌红绿) ───────────── */
+  --accent:         #14524b;
+  --accent-hover:   #0e3e39;
+  --accent-soft:    #e2ebe6;
+  --accent-border:  #b9cec6;
+
+  /* ── 次强调:黄铜,只用于标签、编号、计划卡 ───────────── */
+  --brass:          #a07a2c;
+  --brass-soft:     #f2e8d2;
 
   /* ── 语义 ──────────────────────────────────────────── */
-  --success:        #4ec9a3;
-  --success-soft:   rgba(78, 201, 163, .12);
-  --warning:        #e0b252;
-  --warning-soft:   rgba(224, 178, 82, .12);
-  --danger:         #e06c75;
-  --danger-soft:    rgba(224, 108, 117, .10);
+  --success:        #3e6b4f;
+  --success-soft:   #e6ede3;
+  --warning:        #a07a2c;
+  --warning-soft:   #f2e8d2;
+  --danger:         #a33a2a;
+  --danger-soft:    #f5e3de;
 
   /* ── 子智能体身份色:仅用于圆点与标签文字 ────────────── */
-  --agent-retriever: #5b9dff;
-  --agent-research:  #a98bff;
-  --agent-executor:  #e0a552;
+  --agent-retriever: #14524b;
+  --agent-research:  #a07a2c;
+  --agent-executor:  #5b6b3a;
 
-  /* ── 字号:层级拉开,正文 14px 起 ────────────────────── */
-  --fs-xs:   12px;  /* 辅助说明、徽标 */
-  --fs-sm:   13px;  /* 次级信息、表格行 */
-  --fs-md:   14px;  /* 正文基准 */
-  --fs-lg:   15px;  /* 对话正文、强调正文 */
-  --fs-xl:   18px;  /* 页面标题 */
-  --fs-xxl:  22px;  /* 空态主标题 */
-  --fs-code: 13px;
+  /* ── 字号:标题衬线、正文无衬线,层级拉开 ────────────── */
+  --fs-xs:   11px;    /* 辅助说明、徽标、元信息 */
+  --fs-sm:   12.5px;  /* 次级信息、表格行 */
+  --fs-md:   13.5px;  /* 正文基准 */
+  --fs-lg:   14.5px;  /* 对话正文 */
+  --fs-xl:   20px;    /* 页面标题 */
+  --fs-xxl:  26px;    /* 空态主标题、统计数值 */
+  --fs-code: 12px;
 
   /* ── 字重 ──────────────────────────────────────────── */
   --fw-normal: 400;
@@ -52,75 +61,50 @@
   --fw-strong: 600;
 
   /* ── 行高 ──────────────────────────────────────────── */
-  --lh-tight: 1.35;  --lh-base: 1.5;  --lh-body: 1.7;
+  --lh-tight: 1.35;
+  --lh-base:  1.55;
+  --lh-body:  1.75;
 
   /* ── 间距:4 的倍数 ─────────────────────────────────── */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;
   --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
 
-  /* ── 圆角:整体放大一档,更现代 ──────────────────────── */
-  --r-sm: 6px;  --r-md: 8px;  --r-lg: 12px;  --r-xl: 16px;  --r-full: 999px;
+  /* ── 圆角:纸感硬边,只留极小圆角 ────────────────────── */
+  --r-sm: 3px;  --r-md: 4px;  --r-lg: 6px;  --r-xl: 8px;  --r-full: 999px;
 
-  /* ── 阴影:卡片常驻一层轻影,浮层加重 ────────────────── */
-  --shadow-card:   0 1px 2px rgba(0, 0, 0, .28);
-  --shadow-pop-sm: 0 2px 8px rgba(0, 0, 0, .35);
-  --shadow-pop:    0 8px 24px rgba(0, 0, 0, .45);
+  /* ── 阴影:纸面轻浮,不做霓虹 ────────────────────────── */
+  --shadow-card:   0 1px 2px rgba(28, 26, 22, .05);
+  --shadow-pop-sm: 0 2px 10px rgba(28, 26, 22, .08);
+  --shadow-pop:    0 12px 32px rgba(28, 26, 22, .14);
 
-  /* ── 字体 ──────────────────────────────────────────── */
-  --font-ui:   system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-  --font-mono: "Cascadia Mono", ui-monospace, Consolas, "JetBrains Mono", monospace;
+  /* ── 字体:标题衬线(编辑感)、正文黑体、编号等宽 ──────── */
+  --font-ui:    "Noto Sans SC", "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, "Times New Roman", serif;
+  --font-mono:  "JetBrains Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
 
-  /* ── 动效 ──────────────────────────────────────────── */
+  /* ── 动效:只做状态反馈,不做入场表演 ────────────────── */
   --t-fast: 120ms ease;  --t-base: 200ms ease;
 
-  /* ── 控件尺寸:全站统一 ─────────────────────────────── */
-  --ctl-h-sm: 28px;   /* 行内小按钮 */
+  /* ── 控件尺寸 ──────────────────────────────────────── */
+  --ctl-h-sm: 26px;   /* 行内小按钮 */
   --ctl-h:    32px;   /* 标准按钮 / 输入框 */
   --ctl-h-lg: 36px;   /* 主操作 */
 
-  /* ── 布局 ──────────────────────────────────────────── */
-  --layout-rail:   56px;
-  --layout-panel:  240px;
-  --layout-drawer: 360px;
-  --measure-text:  760px;   /* 对话正文最大宽度 */
-  --measure-page:  1040px;  /* 管理页内容最大宽度 */
+  /* ── 布局:单列索引栏 + 主区 ────────────────────────── */
+  --layout-rail:   300px;
+  --layout-panel:  0px;     /* v2 起上下文内容并入索引栏,保留变量避免旧引用断 */
+  --layout-drawer: 320px;
+  --measure-text:  720px;   /* 对话正文最大宽度 */
+  --measure-page:  1060px;  /* 管理页内容最大宽度 */
 
   /* ── 焦点环 ────────────────────────────────────────── */
   --focus-ring: 2px solid var(--border-focus);
-  --focus-offset: 1px;
-  --focus-glow: 0 0 0 3px rgba(91, 157, 255, .22);
-}
+  --focus-offset: 2px;
+  --focus-glow: 0 0 0 3px rgba(20, 82, 75, .18);
 
-/* 浅色备选:跟随系统,不提供手动切换按钮 */
-@media (prefers-color-scheme: light) {
-  :root {
-    /* 底淡灰、面板纯白:靠明度差分层,卡片浮在画布上 */
-    --bg-base:        #f3f4f6;
-    --bg-panel:       #ffffff;
-    --bg-raised:      #ffffff;
-    --bg-input:       #f3f4f6;
-    --bg-hover:       #eef0f3;
-    --border-subtle:  #e5e7eb;
-    --border-strong:  #d4d8de;
-    --text-primary:   #1a1d23;
-    --text-secondary: #4c5563;
-    --text-muted:     #878f9b;
-    --accent:         #2f6fe4;
-    --accent-hover:   #2359c4;
-    --accent-soft:    rgba(47, 111, 228, .10);
-    --accent-border:  rgba(47, 111, 228, .32);
-    --success:        #1f9e78;
-    --success-soft:   rgba(31, 158, 120, .10);
-    --warning:        #b07d18;
-    --warning-soft:   rgba(176, 125, 24, .10);
-    --danger:         #cf3f4a;
-    --danger-soft:    rgba(207, 63, 74, .08);
-    --agent-retriever:#2f6fe4;
-    --agent-research: #7d4fd4;
-    --agent-executor: #b8761a;
-    --shadow-card:    0 1px 2px rgba(16, 20, 30, .04), 0 1px 3px rgba(16, 20, 30, .05);
-    --shadow-pop-sm:  0 2px 8px rgba(16, 20, 30, .08);
-    --shadow-pop:     0 8px 24px rgba(16, 20, 30, .12);
-    --focus-glow:     0 0 0 3px rgba(47, 111, 228, .18);
-  }
+  /* ── 层叠:遮罩 < 抽屉 < 弹窗 < 通知,统一从这里取 ────── */
+  --z-scrim:  50;
+  --z-drawer: 51;
+  --z-dialog: 60;
+  --z-toast:  100;
 }

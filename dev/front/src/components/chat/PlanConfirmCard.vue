@@ -89,44 +89,47 @@ onMounted(() => {
 .plan {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  border-left: 2px solid var(--accent);
-  border-radius: 0 var(--r-md) var(--r-md) 0;
+  gap: var(--sp-3);
+  padding: 18px 20px;
   background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
 }
 
+/* 卡片标头走黄铜小标签:与正文形成"公文纸"层级 */
 .plan__title {
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
+  color: var(--brass);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.12em;
 }
 
 .plan__lead {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: var(--fs-sm);
+  line-height: var(--lh-base);
 }
 
 .plan__body {
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-input);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-lg);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13.5px;
+  line-height: var(--lh-body);
   overflow-wrap: anywhere;
 }
 
-/* 快照正文间距收紧:列表紧凑呈现,标题去掉多余上边距 */
 .plan__body :deep(p) {
   margin: 0 0 var(--sp-2);
 }
 
-.plan__body :deep(ul) {
+.plan__body :deep(ul),
+.plan__body :deep(ol) {
   margin: 0;
-  padding-left: var(--sp-4);
+  padding-left: var(--sp-5);
 }
 
 .plan__body :deep(li) {
-  margin: var(--sp-1) 0;
+  margin: 6px 0;
 }
 
 .plan__foot {
@@ -140,7 +143,7 @@ onMounted(() => {
 .plan__hint,
 .plan__time {
   color: var(--text-muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
 }
 
 .plan__actions {
@@ -160,8 +163,9 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+/* 失败态用 danger:黄铜是本卡的标识色,不能兼作错误语义 */
 .plan__failed {
-  color: var(--warning);
+  color: var(--danger);
 }
 
 .plan__done-text {

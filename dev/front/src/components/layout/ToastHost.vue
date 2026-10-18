@@ -19,7 +19,7 @@ const ui = useUiStore()
   position: fixed;
   right: var(--sp-4);
   bottom: var(--sp-4);
-  z-index: 100;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
