@@ -621,28 +621,56 @@ def test_ingest_report_defaults_are_independent():
 
 def test_list_docs_aggregates_children_per_doc(wired_client):
     rows = [
-        {"doc_id": "doc-b", "source": "b.md"},
-        {"doc_id": "doc-a", "source": "a.md"},
-        {"doc_id": "doc-a", "source": "a.md"},
-        {"doc_id": "doc-a", "source": "a.md"},
+        {
+            "doc_id": "doc-b",
+            "source": "b.md",
+            "metadata": {"created_at": "2025-01-01T00:00:00+00:00"},
+        },
+        {
+            "doc_id": "doc-a",
+            "source": "a.md",
+            "metadata": {"created_at": "2025-01-01T00:00:00+00:00"},
+        },
+        {
+            "doc_id": "doc-a",
+            "source": "a.md",
+            "metadata": {"created_at": "2025-01-02T00:00:00+00:00"},
+        },
+        {
+            "doc_id": "doc-a",
+            "source": "a.md",
+            "metadata": {"created_at": "2024-12-31T00:00:00+00:00"},
+        },
     ]
     client = wired_client(query_results=rows)
 
     docs = store.list_docs()
 
     assert docs == [
-        {"doc_id": "doc-a", "source": "a.md", "children": 3},
-        {"doc_id": "doc-b", "source": "b.md", "children": 1},
+        {
+            "doc_id": "doc-a",
+            "source": "a.md",
+            "children": 3,
+            "created_at": "2025-01-02T00:00:00+00:00",
+        },
+        {
+            "doc_id": "doc-b",
+            "source": "b.md",
+            "children": 1,
+            "created_at": "2025-01-01T00:00:00+00:00",
+        },
     ]
     assert client.queries[0]["collection"] == store.COLL_CHILDREN
-    assert client.queries[0]["output_fields"] == ["doc_id", "source"]
+    assert client.queries[0]["output_fields"] == ["doc_id", "source", "metadata"]
 
 
 def test_list_docs_tolerates_missing_source(wired_client):
     """老数据里 source 可能取不到: 不能让 KeyError 把 `list` 子命令带崩。"""
     wired_client(query_results=[{"doc_id": "doc-a"}])
 
-    assert store.list_docs() == [{"doc_id": "doc-a", "source": "", "children": 1}]
+    assert store.list_docs() == [
+        {"doc_id": "doc-a", "source": "", "children": 1, "created_at": None}
+    ]
 
 
 def test_list_docs_empty(wired_client):

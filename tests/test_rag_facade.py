@@ -4,6 +4,8 @@
 facade 自身语义(上限早返回、临时文件原名、created 判定、404 布尔)全部真实执行。
 """
 
+import hashlib
+
 import rag_v01
 import rag_v01.store as store_mod
 
@@ -63,6 +65,27 @@ def test_upload_preserves_original_name_and_judges_created(monkeypatch):
     assert r2["ok"] is True and r2["created"] is False and r2["doc_id"] == "d2"
 
 
+def test_upload_duplicate_content_returns_before_ingest(monkeypatch):
+    """内容已存在: 不落临时文件、不 parse/embed, 直接返回已有 doc_id。"""
+    content = b"# hi"
+    doc_id = hashlib.sha256(content).hexdigest()[:16]
+    _setup_store(monkeypatch, {"a.md": doc_id})
+
+    def _boom(paths):
+        raise AssertionError("重复内容不应再进 ingest")
+
+    monkeypatch.setattr(rag_v01, "ingest", _boom)
+    r = rag_v01.upload(content, "换个名字.md")
+
+    assert r == {
+        "ok": True,
+        "error": "",
+        "doc_id": doc_id,
+        "created": False,
+        "name": "a.md",
+    }
+
+
 def test_upload_failure_maps_ingest_error(monkeypatch):
     """入库失败:report.failed 的原因原样进 error(入口直接当 400 文案)。"""
     _setup_store(monkeypatch, {"a.md": "d1"})
@@ -85,11 +108,13 @@ def test_delete_doc_missing_returns_false(monkeypatch):
 
 
 def test_list_docs_shapes_and_sorts(monkeypatch):
-    """管理面列表定型:条目四键 + 按文件名排序(created_at 恒 None)。"""
+    """管理面列表定型:条目四键 + 按文件名排序;created_at 原样透传。"""
     monkeypatch.setattr(store_mod, "list_docs", lambda: [
-        {"source": "b.md", "doc_id": "d2", "children": 5},
+        {"source": "b.md", "doc_id": "d2", "children": 5,
+         "created_at": "2025-01-02T00:00:00+00:00"},
         {"source": "a.md", "doc_id": "d1", "children": 3},
     ])
     docs = rag_v01.list_docs()
     assert [d["filename"] for d in docs] == ["a.md", "b.md"]
     assert docs[0] == {"doc_id": "d1", "filename": "a.md", "chunks": 3, "created_at": None}
+    assert docs[1]["created_at"] == "2025-01-02T00:00:00+00:00"

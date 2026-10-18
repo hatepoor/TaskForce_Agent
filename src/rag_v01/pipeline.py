@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import sys
+import time
 from pathlib import Path
 
 from . import embed, store
@@ -43,7 +45,9 @@ def run_ingest(paths: list[str | Path], cfg: Config | None = None) -> IngestRepo
         if notes:
             warnings[source] = notes
 
+    flushStarted = time.perf_counter()
     store.flush()  # 一整批写完才 flush 一次(04 篇 §4.5: 每条一调会反复封 segment)
+    print(f"[ingest] flush={time.perf_counter() - flushStarted:.2f}s", file=sys.stderr)
     return IngestReport(
         ok_sources=ok,
         failed=failed,
@@ -84,16 +88,33 @@ def _ingest_one(
     path: Path, source: str, cfg: Config
 ) -> tuple[list[ParentChunk], list[ChildChunk], list[str]]:
     """单文件全流程: 返回 (父块, 子块, 该文件的警告)。"""
+    started = time.perf_counter()
     doc = parse_document(path, cfg, source=source)
+    parsedAt = time.perf_counter()
     doc, stats = clean_document(doc, cfg)
+    cleanedAt = time.perf_counter()
     parents, children = split(doc, cfg)
+    chunkedAt = time.perf_counter()
 
     notes = list(doc.meta.get("warnings", []))  # 解析 + 清洗阶段的警告(clean 已并进 meta)
     notes.append(f"清洗统计: {stats}")  # 统计也进报告, 这是 02 篇定的口径
     vectors = embed.embed_chunks(children, warnings=notes)  # 超长跳过等继续往同一个口里记
+    embeddedAt = time.perf_counter()
     stale = store.purge_stale(source, keep_doc_id=doc.doc_id)  # 文件改过 → 清掉同源旧版本
     if stale:
         notes.append(f"清掉同源旧版本 {stale}")
     store.upsert_parents(parents)
     store.upsert_children(children, vectors, warnings=notes)
+    storedAt = time.perf_counter()
+    print(
+        f"[ingest] {source} "
+        f"parse={parsedAt - started:.2f}s "
+        f"clean={cleanedAt - parsedAt:.2f}s "
+        f"chunk={chunkedAt - cleanedAt:.2f}s "
+        f"embed={embeddedAt - chunkedAt:.2f}s "
+        f"store={storedAt - embeddedAt:.2f}s "
+        f"docling={doc.meta.get('elapsed_s')}s "
+        f"parents={len(parents)} children={len(children)}",
+        file=sys.stderr,
+    )
     return parents, children, notes

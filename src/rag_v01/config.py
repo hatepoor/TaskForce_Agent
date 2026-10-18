@@ -21,6 +21,8 @@ from dataclasses import dataclass, fields
 class Config:
     # —— 解析侧(02 篇)——
     do_ocr: bool = False                 # 扫描件才开; 文本型 pdf 开了只会更慢
+    pdf_fast: bool = True                # 默认 FAST 表格模式 + 1.0 倍率;RAG2_PDF_FAST=0 恢复质量档
+    pdf_table_structure: bool = True     # 关闭可再快约 2.5x,但表格会拆成文本碎片(质量优先默认开)
     image_dir: str = "data/rag2_images"  # 图片落盘根目录(image_path 存相对它的路径)
     image_format: str = "png"            # png | jpg
     image_desc: str = "off"              # off | vlm | ocr —— 可选增强, 默认不发起外部调用

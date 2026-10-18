@@ -500,16 +500,17 @@ def _hit(entry: dict) -> Hit:
         metadata=ent.get("metadata") or {},
     )
 def list_docs()->list[dict]:
-    """列出库里的文档: `[{"doc_id", "source", "children"}]`, 按 source 排序。
+    """列出库里的文档: `[{"doc_id", "source", "children", "created_at"}]`, 按 source 排序。
 
-    实现是"把 children 的 doc_id/source 全查回来在客户端聚合" —— Milvus 没有 GROUP BY/DISTINCT,
-    而这是**运维动作**(CLI 的 `list` 子命令), 不是检索热点, 全量拉一次可以接受; 真涨到几十万子块
-    再改成维护一张 docs 汇总表(本期不做)。
+    实现是"把 children 的 doc_id/source/metadata 全查回来在客户端聚合" —— Milvus 没有
+    GROUP BY/DISTINCT, 而这是**运维动作**(CLI 的 `list` 子命令), 不是检索热点, 全量拉一次
+    可以接受; 真涨到几十万子块再改成维护一张 docs 汇总表(本期不做)。
+    `created_at` 取该 doc 所有子块里最新的切块时间(重灌后显示最新入库时间)。
     """
     rows=get_client().query(
         COLL_CHILDREN,
         filter='doc_id != ""',
-        output_fields=["doc_id","source"],
+        output_fields=["doc_id","source","metadata"],
         consistency_level="Strong",
     )
     agg:dict[str,dict]={}
@@ -519,10 +520,14 @@ def list_docs()->list[dict]:
             {
                 "doc_id": row["doc_id"],
                 "source": row.get("source", ""),
-                "children": 0
+                "children": 0,
+                "created_at": None,
             },
         )
         item["children"] += 1
+        stamp = (row.get("metadata") or {}).get("created_at")
+        if stamp and (item["created_at"] is None or stamp > item["created_at"]):
+            item["created_at"] = stamp
     return sorted(agg.values(), key=lambda d: (d["source"], d["doc_id"]))
 
 def purge_stale(source:str,keep_doc_id:str)->list[str]:

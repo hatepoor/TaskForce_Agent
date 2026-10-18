@@ -53,7 +53,8 @@ def search(query: str, top_k: int | None = None) -> list[RetrievedChunk]:
 def list_docs() -> list[dict]:
     """管理面文档列表: `[{doc_id, filename, chunks, created_at}]`, 按文件名排序。
 
-    新内核没有文档表, 列表由 store 聚合子块现算; `created_at` 恒 None(内容寻址, 无上传时间)。
+    新内核没有文档表, 列表由 store 聚合子块现算; `created_at` 来自子块 metadata
+    (切块时刻, 重灌后取最新值), 旧数据没有该字段时为 None。
     """
     from .store import list_docs as _store_list
 
@@ -62,7 +63,7 @@ def list_docs() -> list[dict]:
             "doc_id": row["doc_id"],
             "filename": row["source"],
             "chunks": row["children"],
-            "created_at": None,
+            "created_at": row.get("created_at") or None,
         }
         for row in sorted(_store_list(), key=lambda r: r["source"])
     ]
@@ -87,6 +88,7 @@ def upload(content: bytes, filename: str) -> dict:
     - created=False 表示内容寻址(文件字节 sha256 前 16 位)复用了已有文档。
     上限检查最先做 —— 超限早返回, 不落临时文件也不碰内核。
     """
+    import hashlib
     import shutil
     import tempfile
 
@@ -99,7 +101,20 @@ def upload(content: bytes, filename: str) -> dict:
             "name": filename,
         }
     name = filename or "upload"
-    before = {d["doc_id"] for d in list_docs()}
+    docs = list_docs()
+    before = {d["doc_id"] for d in docs}
+    # 内容寻址早返回:同一份文件重复上传不再 parse/embed/写库(之前只判 created,
+    # 仍然会完整重跑 docling, 12 页 PDF 要几十秒)。
+    docId = hashlib.sha256(content).hexdigest()[:16]
+    existing = next((d for d in docs if d["doc_id"] == docId), None)
+    if existing is not None:
+        return {
+            "ok": True,
+            "error": "",
+            "doc_id": existing["doc_id"],
+            "created": False,
+            "name": existing["filename"],
+        }
 
     # 必须**带着原名**落临时文件: source 取的是文件名(pipeline.expand_paths 的口径),
     # 随机临时名会让入库后的文档在列表里变成一串乱码名。
