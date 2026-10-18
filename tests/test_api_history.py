@@ -206,7 +206,7 @@ def test_sse_interrupt_envelope_ask(monkeypatch):
     _setup(monkeypatch)
 
     def interrupt_run(graph, config, text=None, resume=None,
-                      on_token=None, on_route=None, on_interrupt=None):
+                      on_token=None, on_route=None, on_interrupt=None, onDone=None):
         if on_interrupt:
             on_interrupt([_it({"question": "要哪一年的?"})])
         return None
@@ -224,7 +224,7 @@ def test_sse_interrupt_envelope_memory(monkeypatch):
     _setup(monkeypatch)
 
     def interrupt_run(graph, config, text=None, resume=None,
-                      on_token=None, on_route=None, on_interrupt=None):
+                      on_token=None, on_route=None, on_interrupt=None, onDone=None):
         if on_interrupt:
             on_interrupt([_it({"proposal": "用户偏好用 uv"})])
         return None
@@ -241,7 +241,7 @@ def test_sse_interrupt_envelope_unknown(monkeypatch):
     _setup(monkeypatch)
 
     def interrupt_run(graph, config, text=None, resume=None,
-                      on_token=None, on_route=None, on_interrupt=None):
+                      on_token=None, on_route=None, on_interrupt=None, onDone=None):
         if on_interrupt:
             on_interrupt([_it({"mystery": 1})])
         return None
@@ -256,7 +256,7 @@ def _recording_run(seen):
     """假 run_turn:记录 text/resume 透传,并驱动 token 回调(供 SSE 断言)。"""
 
     def run_turn(graph, config, text=None, resume=None,
-                 on_token=None, on_route=None, on_interrupt=None):
+                 on_token=None, on_route=None, on_interrupt=None, onDone=None):
         seen["text"] = text
         seen["resume"] = resume
         if on_token:
@@ -284,7 +284,7 @@ def test_confirm_type_mismatch_rejected(monkeypatch):
     _setup_resume(monkeypatch)  # 假图挂起 value={"question": "?"}
 
     def spy_run(graph, config, text=None, resume=None,
-                on_token=None, on_route=None, on_interrupt=None):
+                on_token=None, on_route=None, on_interrupt=None, onDone=None):
         raise AssertionError("类型不匹配时不应执行 run_turn")
 
     monkeypatch.setattr(chat_mod, "run_turn", spy_run)
@@ -341,7 +341,7 @@ def test_sse_error_frame_on_exception(monkeypatch):
     _setup(monkeypatch)
 
     def boom_run(graph, config, text=None, resume=None,
-                 on_token=None, on_route=None, on_interrupt=None):
+                 on_token=None, on_route=None, on_interrupt=None, onDone=None):
         raise RuntimeError("模型服务不可用")
 
     monkeypatch.setattr(chat_mod, "run_turn", boom_run)
@@ -358,7 +358,7 @@ def test_sse_error_frame_on_recursion_marker(monkeypatch):
     _setup(monkeypatch)
 
     def recursion_run(graph, config, text=None, resume=None,
-                      on_token=None, on_route=None, on_interrupt=None):
+                      on_token=None, on_route=None, on_interrupt=None, onDone=None):
         return AIMessage(
             content="本轮任务循环过深,已中止。请把需求拆小一点再试。",
             additional_kwargs={"taskforce_error": "recursion_limit"},

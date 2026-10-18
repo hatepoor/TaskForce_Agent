@@ -8,6 +8,7 @@ from agent.contracts import (
     ask_payload,
     classify_interrupt,
     memory_payload,
+    plan_payload,
 )
 from agent.service import AUTO_NOTICE
 
@@ -35,6 +36,23 @@ def test_classify_unknown_and_non_dict_not_silent():
     assert kind == "unknown"
     assert classify_interrupt(None)[0] == "unknown"
     assert classify_interrupt({}) == ("unknown", "{}")
+
+
+def test_interrupt_text_normalizes_escaped_newlines():
+    """实测坑:模型把换行写成字面量 \\n,卡片会原样显示;载荷读写两侧都要还原。"""
+    assert ask_payload("第一行\\n第二行")["text"] == "第一行\n第二行"
+    assert memory_payload("a\\r\\nb")["text"] == "a\nb"
+    assert plan_payload("s1\\ts2")["text"] == "s1\ts2"
+    assert classify_interrupt({"kind": "ask", "text": "第一行\\n第二行"}) == (
+        "ask",
+        "第一行\n第二行",
+    )
+    assert classify_interrupt({"question": "旧\\n问题"}) == ("ask", "旧\n问题")
+    # 已有真实换行的文本不能被二次破坏
+    assert classify_interrupt({"kind": "ask", "text": "第一行\n第二行"}) == (
+        "ask",
+        "第一行\n第二行",
+    )
 
 
 def test_prefix_literals_locked():

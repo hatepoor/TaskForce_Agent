@@ -30,8 +30,14 @@ from cli.context import ReplContext
 from cli.streaming import StreamRenderer
 from settings.config import get_settings
 from settings.db.checkpointer import get_checkpointer
+from settings.db.sessions import touchSession
 from settings.session import SessionStore
 from settings.usage import UsageTracker
+
+
+def _touchSession(ctx: ReplContext, title: str | None = None) -> None:
+    """run_turn 的 onDone 回调:更新会话元数据(派生索引,失败不影响回答)。"""
+    touchSession(ctx.checkpointer, ctx.thread_id, title=title)
 
 
 def _resume_confirm(ctx: ReplContext, renderer: StreamRenderer,
@@ -68,6 +74,7 @@ def _resume_confirm(ctx: ReplContext, renderer: StreamRenderer,
                     resume=arg in ("yes", "y"),
                     on_token=renderer.on_token,
                     on_route=renderer.on_route,
+                    onDone=lambda: _touchSession(ctx),
                 )
         finally:
             # 与其他分支同款清理:挂起/异常路径都必须收掉 Spinner(06 #4)
@@ -107,6 +114,7 @@ def _resume_ask(ctx: ReplContext, renderer: StreamRenderer, commands: dict,
                     resume=answer,
                     on_token=renderer.on_token,
                     on_route=renderer.on_route,
+                    onDone=lambda: _touchSession(ctx),
                 )
         finally:
             # 挂起返回 None 时也必须收掉 Spinner,否则吞终端回显(盲打,06 #4)
@@ -138,6 +146,7 @@ def _resume_plan(ctx: ReplContext, renderer: StreamRenderer,
                     resume=answer,
                     on_token=renderer.on_token,
                     on_route=renderer.on_route,
+                    onDone=lambda: _touchSession(ctx),
                 )
         finally:
             # 与其他恢复分支同款清理:挂起/异常路径都必须收掉 Spinner
@@ -175,7 +184,8 @@ def _auto_summary_worker(ctx: ReplContext, renderer: StreamRenderer,
             renderer.start_status("汇总子智能体结果…")
             try:
                 final = run_turn(ctx.graph, ctx.graph_config, AUTO_NOTICE,
-                                 on_token=renderer.on_token, on_route=renderer.on_route)
+                                 on_token=renderer.on_token, on_route=renderer.on_route,
+                                 onDone=lambda: _touchSession(ctx))
             finally:
                 streamed = renderer.finish()
             if final is not None:
@@ -277,7 +287,8 @@ def main() -> None:
                 final = run_turn(
                     graph, config, text,
                     on_token=renderer.on_token, on_route=renderer.on_route,
-                    on_interrupt=renderer.on_interrupt)
+                    on_interrupt=renderer.on_interrupt,
+                    onDone=lambda text=text: _touchSession(ctx, text))
             finally:
                 # 无论正常/异常,都要把 Spinner 和 Live 干净收掉;返回值即 streamed 标志
                 streamed = renderer.finish()

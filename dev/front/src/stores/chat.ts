@@ -35,6 +35,7 @@ import type {
   UsageEvent,
 } from '@/types/chat'
 import { isThreadId, newItemId, newThreadId } from '@/utils/id'
+import { normalizeInterruptText } from '@/utils/text'
 
 /** 会话列表一行(后端 meta 与本地元数据融合后的展示模型)。 */
 export interface SessionRow {
@@ -70,7 +71,7 @@ export function buildHistoryItems(
       seq: items.length,
       at: 0,
       sub: pending.kind,
-      text: pending.text,
+      text: normalizeInterruptText(pending.text),
       status: 'waiting',
     })
   }
@@ -470,7 +471,7 @@ export const useChatStore = defineStore('chat', () => {
       seq: nextSeq(threadId),
       at: Date.now(),
       sub: envelope.kind,
-      text: envelope.text,
+      text: normalizeInterruptText(envelope.text),
       status: 'waiting',
     }
     pushItem(threadId, item)

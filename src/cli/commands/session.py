@@ -41,9 +41,9 @@ def cmd_stats(args: str, ctx: ReplContext) -> None:
 
 def cmd_list_session(args: str, ctx: ReplContext) -> None:
     """列出全部会话 id(当前会话打 *),配合 /resume <id> 切换恢复。"""
-    from settings.db.checkpointer import list_session_ids  # 局部导入:首次调用才连库
+    from settings.db.sessions import listThreadIds  # 局部导入:首次调用才连库
 
-    ids = list_session_ids(ctx.checkpointer)
+    ids = listThreadIds(ctx.checkpointer)
     if not ids:
         ctx.console.print("[dim](尚无历史会话)[/dim]")
         return

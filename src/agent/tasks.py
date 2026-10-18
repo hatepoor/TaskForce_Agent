@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from agent.contracts import ResultSummary, TaskContract
 from agent.subagents.registry import BUILDERS, get_subgraph
 
-MAX_WORKERS = 3
+MAX_WORKERS = 4
 
 class TaskManager:
     """提交后台任务、原子回收结果;主图侧唯一入口,经 supervisor 注入。"""

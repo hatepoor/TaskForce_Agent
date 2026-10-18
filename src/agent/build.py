@@ -28,9 +28,9 @@ def make_llm(settings=None, thinking: str | None = None) -> ChatOpenAI:
     """把 .env 配置装配成 ChatOpenAI(豆包 OpenAI 兼容)。
 
     thinking:adaptive / enabled / disabled,None 时读 settings.llm_thinking。
-    supervisor 的结构化路由固定传 "disabled"——DeepSeek 思考模式不支持强制
-    tool_choice(with_structured_output 底层会 400),且路由是高频低延迟节点,
-    深度思考对路由决策无益;reasoning_effort 仅在思考模式下携带。
+    supervisor 路由与 planner 计划生成固定传 "disabled"——两者都用
+    with_structured_output(强制 tool_choice),DeepSeek 思考模式不支持该组合
+    (底层 400);reasoning_effort 仅在思考模式下携带。
     换非豆包/非 DeepSeek 模型时 extra_body 被忽略,保留无害。
     """
     s = settings or get_settings()
@@ -55,8 +55,9 @@ def build_graph(llm, checkpointer=None, tasks=None, routeLlm=None):
     """CLI 与 API 共用的唯一构建入口;三个子图经共享注册表装配后直挂 add_node
     (c7:与 TaskManager 后台 invoke 取同一批编译实例,不再双份装配)。
 
-    routeLlm:supervisor 路由专用 LLM,缺省复用 llm;生产入口应传 thinking=disabled
-    的实例——DeepSeek 思考模式不支持强制 tool_choice,路由会 400(见 make_llm)。
+    routeLlm:supervisor 路由 + planner 计划生成专用 LLM,缺省复用 llm;
+    生产入口应传 thinking=disabled 的实例——两者都强制 tool_choice,
+    DeepSeek 思考模式会 400(见 make_llm)。
 
     异步派发(方案 A):TaskManager 随图构建(测试可注入 fake),supervisor 的
     dispatch 分支提交后台任务、结果经 supervisor 每轮回收注入(主图同步 Send
@@ -72,7 +73,7 @@ def build_graph(llm, checkpointer=None, tasks=None, routeLlm=None):
     b.add_node("retriever", get_subgraph(llm, "retriever"))
     b.add_node("research", get_subgraph(llm, "research"))
     b.add_node("executor", get_subgraph(llm, "executor"))
-    b.add_node("plan_draft", lambda s: plan_draft_node(s, llm))
+    b.add_node("plan_draft", lambda s: plan_draft_node(s, routeLlm))
     b.add_node("plan_confirm", lambda s, config: plan_confirm_node(s, tasks, config=config))
     b.add_edge(START, "supervisor")
     # fan-in:子图完成后回 supervisor 重新路由
@@ -82,5 +83,7 @@ def build_graph(llm, checkpointer=None, tasks=None, routeLlm=None):
     b.add_edge("ask", "supervisor")
     b.add_edge("memory", END)
     b.add_edge(START, "supervisor")
-    b.add_edge("plan_draft", "plan_confirm")   # 新增(唯一新静态边)
+    # plan_draft / plan_confirm 都用 Command(goto=...) 显式路由(成功去确认、
+    # 失败回 answer),不能再加 plan_draft->plan_confirm 静态边:静态边优先,
+    # planner 回退时也会被拉进 plan_confirm,state 无 plan 直接 KeyError。
     return b.compile(checkpointer=checkpointer)

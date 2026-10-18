@@ -34,7 +34,11 @@ def get_store(database_url: str, embed: EmbedFn | None = None) -> PostgresStore:
         kwargs={
             "autocommit":True,
         },
-        max_size=10,
+        min_size=2,
+        max_size=8,
+        timeout=10,
+        max_idle=300,
+        max_lifetime=3600,
         open=True,
     )
     if embed is None:

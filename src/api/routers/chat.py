@@ -27,7 +27,13 @@ from agent.contracts import SYNTHETIC_USER_PREFIXES, classify_interrupt
 from agent.service import AUTO_NOTICE, run_turn
 from agent.tasks import TaskManager
 from settings.config import get_settings
-from settings.db.checkpointer import get_checkpointer, list_session_ids, list_session_meta
+from settings.db.checkpointer import get_checkpointer
+from settings.db.sessions import (
+    deleteSession,
+    listSessions,
+    listThreadIds,
+    touchSession,
+)
 from settings.usage import UsageTracker
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -58,7 +64,15 @@ def _require_interrupt(graph, config, expect: str) -> None:
             detail=f"挂起类型不匹配:期望 {expect},实际 {actual}",
         )
 
-def _sse_run(graph,config,usage,*,text=None,resume=None)->StreamingResponse:
+def _sse_run(
+        graph,
+        config,
+        usage,
+        *,
+        text=None,
+        resume=None,
+        checkpointer=None,
+) -> StreamingResponse:
     """跑一轮 run_turn,事件以 SSE 逐条 yield(B4 真流式)。
 
     run_turn 是同步阻塞的:直接写进 gen 会"攒完全部帧才吐"(首字节延迟=整轮
@@ -83,11 +97,27 @@ def _sse_run(graph,config,usage,*,text=None,resume=None)->StreamingResponse:
                     streamed = True
                     emit("token", t)
 
+                def onDone() -> None:
+                    if checkpointer is None:
+                        return
+                    title = None
+                    if text and not any(
+                        text.startswith(prefix)
+                        for prefix in SYNTHETIC_USER_PREFIXES
+                    ):
+                        title = text
+                    touchSession(
+                        checkpointer,
+                        config["configurable"]["thread_id"],
+                        title=title,
+                    )
+
                 final=run_turn(
                     graph, config, text=text, resume=resume,
                     on_token=on_token,
                     on_route=lambda r: emit("route", r),
                     on_interrupt=lambda updates: emit("interrupt", _interrupt_envelope(updates)),
+                    onDone=onDone,
                 )
                 if isinstance(final,AIMessage) and final.additional_kwargs.get("taskforce_error"):
                     # recursion 兜底类错误:走 error 帧(前端区别于正常回答),不计 usage
@@ -161,7 +191,13 @@ def chat(req: ChatRequest) -> StreamingResponse:
     graph, _checkpointer, usage, _tasks = _get_app()
     thread_id = req.thread_id or f"sess-{uuid.uuid4().hex[:8]}"
     config = {"recursion_limit": 40, "configurable": {"thread_id": thread_id}}
-    return _sse_run(graph, config, usage, text=req.text)
+    return _sse_run(
+        graph,
+        config,
+        usage,
+        text=req.text,
+        checkpointer=_checkpointer,
+    )
 
 
 @router.get("/tasks")
@@ -177,16 +213,19 @@ def task_status(thread_id: str):
 
 @router.get("/threads")
 def list_threads():
-    """近 N 个会话线程 id(checkpoints 表 DISTINCT,复用 REPL /list_session 的数据源)。"""
+    """全部会话线程 id(sessions 元数据表,按最近活跃倒序)。"""
     _graph, checkpointer, _usage, _tasks = _get_app()
-    return {"threads": list_session_ids(checkpointer)}
+    return {"threads": listThreadIds(checkpointer)}
 
 @router.get("/threads/meta")
 def threads_meta():
-    """会话元数据:最近活跃排序 + checkpoint 数。与 /threads/{id}/messages
-    的路由次序无关(路径无重叠),但务必放在 /threads 附近,便于阅读。"""
+    """会话元数据:最近活跃排序 + checkpoint 数(只查 sessions 小表)。
+
+    与 /threads/{id}/messages 的路由次序无关(路径无重叠),但务必放在
+    /threads 附近,便于阅读。
+    """
     _graph, checkpointer, _usage, _tasks = _get_app()
-    return {"threads": list_session_meta(checkpointer)}
+    return {"threads": listSessions(checkpointer)}
 
 
 @router.delete("/threads/{thread_id}")
@@ -202,6 +241,7 @@ def delete_thread(thread_id: str):
     if not discarded["ok"]:
         raise HTTPException(status_code=400, detail="该会话有正在执行的后台任务,完成后再删除")
     checkpointer.delete_thread(thread_id)
+    deleteSession(checkpointer, thread_id)
     return {"ok": True, "thread_id": thread_id}
 
 @router.get("/threads/{thread_id}/messages")
@@ -270,7 +310,13 @@ def summary(req: SummaryRequest) -> StreamingResponse:
     if tasks.status(req.thread_id)["done"] == 0:
         raise HTTPException(status_code=400, detail="该会话没有待汇总的后台任务结果")
     config = {"recursion_limit": 40, "configurable": {"thread_id": req.thread_id}}
-    return _sse_run(graph, config, usage, text=AUTO_NOTICE)
+    return _sse_run(
+        graph,
+        config,
+        usage,
+        text=AUTO_NOTICE,
+        checkpointer=_checkpointer,
+    )
 
 
 @router.post("/confirm")
@@ -279,7 +325,13 @@ def confirm(req: ConfirmRequest) -> StreamingResponse:
     graph, _checkpointer, usage, _tasks = _get_app()
     config = {"recursion_limit": 40, "configurable": {"thread_id": req.thread_id}}
     _require_interrupt(graph,config,"memory")
-    return _sse_run(graph, config, usage, resume=req.approved)
+    return _sse_run(
+        graph,
+        config,
+        usage,
+        resume=req.approved,
+        checkpointer=_checkpointer,
+    )
 
 
 @router.post("/answer")
@@ -288,7 +340,13 @@ def answer(req: AnswerRequest) -> StreamingResponse:
     graph, _checkpointer, usage, _tasks = _get_app()
     config = {"recursion_limit": 40, "configurable": {"thread_id": req.thread_id}}
     _require_interrupt(graph,config,"ask")
-    return _sse_run(graph, config, usage, resume=req.text)
+    return _sse_run(
+        graph,
+        config,
+        usage,
+        resume=req.text,
+        checkpointer=_checkpointer,
+    )
 
 @router.post("/plan")
 def plan(req: AnswerRequest) -> StreamingResponse:
@@ -296,4 +354,10 @@ def plan(req: AnswerRequest) -> StreamingResponse:
     graph, _checkpointer, usage, _tasks = _get_app()
     config = {"recursion_limit": 40, "configurable": {"thread_id": req.thread_id}}
     _require_interrupt(graph, config, "plan")
-    return _sse_run(graph, config, usage, resume=req.text)
+    return _sse_run(
+        graph,
+        config,
+        usage,
+        resume=req.text,
+        checkpointer=_checkpointer,
+    )

@@ -26,34 +26,50 @@ class InterruptPayload(TypedDict):
     text: str
 
 
+def _normalizeText(text: str) -> str:
+    """还原模型结构化输出里双重转义的换行/制表符。
+
+    实测坑:路由模型把换行写成字面量 "\\n"(反斜杠+n)而不是 JSON 的真实换行,
+    卡片拿到后原样显示, 满屏 "\\n"。挂起文本一律按真实换行还原再交渲染层;
+    只处理挂起载荷, 不动助手正文(正文里的 "\\n" 可能是代码示例, 不能乱改)。
+    """
+    return (
+        text.replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\r", "\n")
+        .replace("\\t", "\t")
+    )
+
+
 def ask_payload(question: str) -> InterruptPayload:
     """ask 问询挂起载荷。"""
-    return {"kind": "ask", "text": question}
+    return {"kind": "ask", "text": _normalizeText(question)}
 
 
 def memory_payload(proposal: str) -> InterruptPayload:
     """memory 确认写入挂起载荷。"""
-    return {"kind": "memory", "text": proposal}
+    return {"kind": "memory", "text": _normalizeText(proposal)}
 
 def plan_payload(plan_text: str) -> InterruptPayload:
     """计划确认挂起载荷(plan_0.1):text 为进度快照 + 确认指引(双入口直读展示)。"""
-    return {"kind": "plan", "text": plan_text}
+    return {"kind": "plan", "text": _normalizeText(plan_text)}
 
 def classify_interrupt(value) -> tuple[InterruptKind, str]:
     """识别挂起载荷 → (kind, text)。
 
     kind 优先(c5 新形状); 兼容旧检查点的键名形状(question/proposal);
     非 dict / 未知形状 → ("unknown", str(value)), 调用方显式兜底而不是猜。
+    文本统一还原双重转义换行(存量检查点也受益, 无需迁移)。
     """
     v = value if isinstance(value, dict) else {}
     kind = v.get("kind")
     if kind in ("ask", "memory","plan"):
-        return kind, str(v.get("text", ""))
+        return kind, _normalizeText(str(v.get("text", "")))
     if "question" in v:  # 旧形状兼容(存量检查点, 不迁移)
-        return "ask", str(v["question"])
+        return "ask", _normalizeText(str(v["question"]))
     if "proposal" in v:
-        return "memory", str(v["proposal"])
-    return "unknown", str(v)
+        return "memory", _normalizeText(str(v["proposal"]))
+    return "unknown", _normalizeText(str(v))
 
 
 # ---- 合成消息前缀(生产/消费两侧的唯一字面出处) ----

@@ -24,11 +24,26 @@ _MESSAGE_WARN_THRESHOLD = 40
 # 保证双入口语义一致(历史回填按 PREFIX_SYSTEM_NOTICE 过滤,不出现在对话记录里)。
 AUTO_NOTICE = PREFIX_SYSTEM_NOTICE + "后台子智能体任务已完成,请直接汇总结果。"
 
+# 普通轮只在结束/挂起时落一次 checkpoint。默认 async 只是异步写,写入次数不变;
+# exit 把一轮的中间 super-step checkpoint 省掉,checkpoint 表增长从 O(轮数²) 回到 O(轮数)。
+# 崩溃会丢当前轮中间态(已完成轮次不受影响);interrupt 仍会在挂起时落盘。
+_DURABILITY = "exit"
 
-def run_turn(graph, config, text=None, resume=None, on_token=None, on_route=None,on_interrupt=None):
+
+def run_turn(
+        graph,
+        config,
+        text=None,
+        resume=None,
+        on_token=None,
+        on_route=None,
+        on_interrupt=None,
+        onDone=None,
+):
     """单轮对话:graph 为 build_graph() 的编译产物。
 
     on_token(str) 逐 token 回调(打字机);on_route(Route) 每次路由决策回调(轨迹打印)。
+    onDone() 在本轮结束、异常或 interrupt 挂起时都会调用(会话元数据落库用);
     未来 SSE:API 层把 on_token 接到 StreamingResponse 的 generator 即可,零改动。
     """
     try:
@@ -38,6 +53,7 @@ def run_turn(graph, config, text=None, resume=None, on_token=None, on_route=None
                 inputs,
                 config=config,
                 stream_mode=["messages", "updates"],
+                durability=_DURABILITY,
         ):
             if mode=='messages':
                 chunk,meta = payload
@@ -74,6 +90,13 @@ def run_turn(graph, config, text=None, resume=None, on_token=None, on_route=None
             content="本轮任务循环过深,已中止。请把需求拆小一点再试。",
             additional_kwargs={"taskforce_error": "recursion_limit"},
         )
+    finally:
+        if onDone is not None:
+            try:
+                onDone()
+            except Exception as exc:
+                # 元数据是派生索引:写失败不能影响本轮回答,只留痕
+                print(f"[warn] 会话元数据更新失败: {exc}")
     try:
         state = graph.get_state(config)
         msgs = state.values["messages"]

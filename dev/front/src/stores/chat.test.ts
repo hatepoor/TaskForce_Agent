@@ -7,7 +7,7 @@ import { useUiStore } from '@/stores/ui'
 import { createFakeStorage } from '@/test-utils/fakeStorage'
 import type { ThreadMessagesResponse, ThreadMetaResponse } from '@/types/chat'
 
-import { titleFromText, useChatStore } from './chat'
+import { buildHistoryItems, titleFromText, useChatStore } from './chat'
 
 vi.mock('@/api/chat', () => ({
   listThreadsMeta: vi.fn(),
@@ -632,5 +632,23 @@ describe('removeThread(删除会话)', () => {
     expect(res).toBe('streaming')
     expect(mockRemoveThread).not.toHaveBeenCalled()
     expect(chat.threadMeta[id]).toBeDefined() // 原样保留
+  })
+})
+
+describe('interrupt 文本转义还原', () => {
+  it('历史回填的 pending 文本还原字面量 \\n', () => {
+    const items = buildHistoryItems([], { kind: 'ask', text: '第一行\\n第二行' })
+
+    expect(items[0]).toMatchObject({ kind: 'interrupt', text: '第一行\n第二行' })
+  })
+
+  it('SSE interrupt 帧的文本还原字面量 \\n', () => {
+    const chat = useChatStore()
+    chat.beginTurn()
+    chat.setPending({ kind: 'ask', text: '第一行\\n第二行' })
+
+    const last = chat.items[chat.items.length - 1]
+    expect(last).toMatchObject({ kind: 'interrupt', text: '第一行\n第二行' })
+    expect(chat.pending?.text).toBe('第一行\n第二行')
   })
 })

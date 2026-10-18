@@ -181,3 +181,115 @@ def test_plan_confirm_reject_clears_plan():
     # 取消提示进消息历史(reject 后图继续走到 answer,末条会是回答,故查任意一条)
     texts = [m.content for m in st.values["messages"] if isinstance(m.content, str)]
     assert any("已取消" in t for t in texts)
+
+
+# ---------------- 回归:planner 400 回退不得被拉进 plan_confirm ----------------
+
+class BoomPlanLLM:
+    """路由到 plan,但计划生成抛 400(模拟思考模式不支持强制 tool_choice)。"""
+
+    def __init__(self):
+        self._routed = False
+        self.schema = None
+
+    def with_structured_output(self, schema, **kwargs):
+        self.schema = schema
+        return self
+
+    def bind_tools(self, tools):
+        return self
+
+    def invoke(self, messages):
+        schema, self.schema = self.schema, None
+        if schema is PlanDraft:
+            raise Exception("Error code: 400 - Thinking mode does not support this tool_choice")
+        if not self._routed:
+            self._routed = True
+            return Route(next="plan")
+        return AIMessage(content="已按单步处理")
+
+
+class AnswerOnlyLLM:
+    """只会回答的 LLM:被 planner 用于结构化输出即断言失败。"""
+
+    def with_structured_output(self, schema, **kwargs):
+        if schema is PlanDraft:
+            raise AssertionError("planner 不应使用回答 LLM(思考模式会 400)")
+        return self
+
+    def bind_tools(self, tools):
+        return self
+
+    def invoke(self, messages):
+        return AIMessage(content="回答")
+
+
+class RouteAndPlanLLM:
+    """routeLlm 替身:路由到 plan,并返回计划草案。"""
+
+    def __init__(self, draft):
+        self._draft = draft
+        self._routed = False
+        self.schema = None
+
+    def with_structured_output(self, schema, **kwargs):
+        self.schema = schema
+        return self
+
+    def bind_tools(self, tools):
+        return self
+
+    def invoke(self, messages):
+        schema, self.schema = self.schema, None
+        if schema is PlanDraft:
+            return self._draft
+        if not self._routed:
+            self._routed = True
+            return Route(next="plan")
+        return AIMessage(content="回答")
+
+
+def test_plan_confirm_missing_plan_returns_answer_not_keyerror():
+    """state 无 plan 时给可读兜底,不再 KeyError('plan')(实测坑)。"""
+    cmd = plan_confirm_node({}, tasks=None)
+    assert cmd.goto == "answer"
+    assert cmd.update["plan"] is None
+    assert "计划状态已丢失" in cmd.update["messages"][0].content
+
+
+def test_plan_draft_failure_falls_back_without_plan_confirm():
+    """planner 结构化调用 400 回退 answer:不得再被静态边拉进 plan_confirm。"""
+    graph = build_graph(BoomPlanLLM(), InMemorySaver(), tasks=FakeTasks())
+    config = {"recursion_limit": 25, "configurable": {"thread_id": "plan-boom"}}
+    list(
+        graph.stream(
+            {"messages": [("user", "对比宁德时代与比亚迪 2024 年毛利率")]},
+            config,
+            stream_mode="updates",
+        )
+    )
+    st = graph.get_state(config)
+    assert not st.interrupts  # 没有 plan 挂起
+    assert not st.values.get("plan")  # 回退路径不落计划
+    texts = [m.content for m in st.values["messages"] if isinstance(m.content, str)]
+    assert any("没能拆成计划" in t for t in texts)
+
+
+def test_plan_draft_uses_route_llm_for_forced_tool_choice():
+    """planner 与 supervisor 一样必须用关思考的 routeLlm,否则真实端点 400。"""
+    graph = build_graph(
+        AnswerOnlyLLM(),
+        InMemorySaver(),
+        tasks=FakeTasks(),
+        routeLlm=RouteAndPlanLLM(_draft()),
+    )
+    config = {"recursion_limit": 25, "configurable": {"thread_id": "plan-route-llm"}}
+    list(
+        graph.stream(
+            {"messages": [("user", "对比宁德时代与比亚迪 2024 年毛利率")]},
+            config,
+            stream_mode="updates",
+        )
+    )
+    st = graph.get_state(config)
+    assert st.interrupts and st.interrupts[0].value["kind"] == "plan"

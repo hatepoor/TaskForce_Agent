@@ -15,6 +15,8 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from psycopg_pool import ConnectionPool
 
+from settings.db.sessions import ensureSessionsTable
+
 # checkpoint 允许反序列化的项目契约类型(不配则每轮告警;strict 模式下直接拒绝)
 _ALLOWED_CONTRACTS = [
     ("agent.contracts.route", "Route"),
@@ -31,10 +33,16 @@ def get_checkpointer(database_url:str)->PostgresSaver:
         kwargs={
             "autocommit": True
         },
-        max_size=10,
-    open=True)
+        min_size=2,
+        max_size=8,
+        timeout=10,
+        max_idle=300,
+        max_lifetime=3600,
+        open=True,
+    )
     saver = PostgresSaver(pool)
     saver.setup()          # CREATE TABLE IF NOT EXISTS 语义,幂等,进程内只跑一次
+    ensureSessionsTable(saver)  # 会话列表元数据表;老库首次从 checkpoints 回填
     saver.serde = JsonPlusSerializer(allowed_msgpack_modules=_ALLOWED_CONTRACTS)
     return saver
 

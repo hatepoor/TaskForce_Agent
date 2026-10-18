@@ -33,6 +33,18 @@ from settings.loader import load_prompt
 from tools.skills.loader import _skills_meta
 
 MAX_PARALLEL_SUBAGENTS = 3
+
+def _clampTasks(tasks: list[Task])->list[Task]:
+    """派发上限:plan 批次与临时 dispatch 共用,防止模型超发把线程池队列堆长。"""
+    if len(tasks) <= MAX_PARALLEL_SUBAGENTS:
+        return tasks
+    print(
+        f"[supervisor] 一次派发 {len(tasks)} 个任务,超过上限 "
+        f"{MAX_PARALLEL_SUBAGENTS},截断至前几个(其余丢弃)",
+        file=sys.stderr,
+    )
+    return tasks[:MAX_PARALLEL_SUBAGENTS]
+
 def build_contract(task:Task,state:AgentState)->TaskContract:
     """会话 -> 任务契约的纯函数:自包含任务 + 用户原话 + 结构化输入 + 输出提示。"""
     last=state["messages"][-1] if state["messages"] else None
@@ -51,13 +63,7 @@ def dispatch_sends(tasks: list[Task], state: AgentState, route: Route | None = N
     实测:裸 [Send] 作为节点返回值会被当 state update 抛 InvalidUpdateError;
     fan-out 必须包在 Command(goto=[...]) 里。
     """
-    if len(tasks)>MAX_PARALLEL_SUBAGENTS:
-        print(
-            f"[supervisor] 一次派发 {len(tasks)} 个任务,超过上限 {MAX_PARALLEL_SUBAGENTS},"
-            "截断至前几个(其余丢弃)",
-            file=sys.stderr,
-        )
-        tasks = tasks[:MAX_PARALLEL_SUBAGENTS]  # 截断
+    tasks = _clampTasks(tasks)  # 截断
     sends = [
         Send(t.agent, {"contract": build_contract(t, state).model_dump()})
         for t in tasks
@@ -90,12 +96,17 @@ def _advance_plan(
     ids=_dispatch_ready(plan,tasks,thread_id) if tasks is not None else []
 
     if plan.finished():
-        # 收口:plan 清账;answer 从 subagent_results 拿全部步结果汇总
-        # (messages[-1] 是 AUTO_NOTICE"请直接汇总结果",语义正好衔接)
-        return "answer",{
+        update = {
             "plan": None,
             "messages": [AIMessage(content=f"计划执行完毕:\n{plan.snapshot()}")],
         }
+        last = state["messages"][-1] if state["messages"] else None
+        if last is not None and str(last.content).startswith(PREFIX_SYSTEM_NOTICE):
+            # 唤醒轮:没有用户新话,收口后直接交给 answer 汇总
+            return "answer", update
+        # 用户轮:先落计划收口快照,再让 route_node 继续路由用户的新请求
+        return None, update
+
     if not (ids or injected):
         return None, {}  # 有 running 在跑、本轮无新事件:不短路不推进
     snap = {
@@ -181,19 +192,22 @@ def route_node(state: AgentState, llm, tasks=None, config=None) -> Command:
             return dispatch_sends(route.tasks, state, route=route)
         # 异步派发(方案 A):提交后台线程池立即返回确认消息,用户可继续交互;
         # 结果由后续轮次 supervisor 经 tasks.drain_done() 回收注入。
-        jobs = [(t.agent, build_contract(t, state)) for t in route.tasks]
+        routeTasks = _clampTasks(route.tasks)
+        jobs = [(t.agent, build_contract(t, state)) for t in routeTasks]
         task_ids = tasks.submit(jobs, thread_id=thread_id or "")
         detail = "、".join(
             f"{agent}:{tid}" for (agent, _), tid in zip(jobs, task_ids, strict=False)
+        )
+        dispatchMsg = AIMessage(
+            content=f"已派发 {len(task_ids)} 个后台任务:[{detail}]。"
+            "预计 1-3 分钟完成;完成后我会自动汇总,期间你可以继续聊别的。"
         )
         return Command(
             goto=END,
             update={
                 **update,
-                "messages": [AIMessage(
-                    content=f"已派发 {len(task_ids)} 个后台任务:[{detail}]。"
-                    "预计 1-3 分钟完成;完成后我会自动汇总,期间你可以继续聊别的。"
-                )],
+                # 同轮可能还有 plan 收口快照:追加,不能覆盖
+                "messages": [*update.get("messages", []), dispatchMsg],
             },
         )
     return Command(goto=route.next, update=update)

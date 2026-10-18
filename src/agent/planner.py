@@ -131,7 +131,17 @@ def plan_confirm_node(state: AgentState, tasks, config=None) -> Command:
 
     纯确定性节点:resume 后重跑时不调 LLM,只按 resume 值分支(ADR-0012 决策 2)。
     """
-    plan = Plan.model_validate(state["plan"])
+    planData = state.get("plan")
+    if not planData:
+        # 防御:plan_draft 生成失败会回退 answer,若仍有静态边把本节点调度进来,
+        # state 里没有 plan 会直接 KeyError(实测坑);给可读兜底而不是崩溃。
+        return Command(
+            goto="answer",
+            update={"plan": None, "messages": [AIMessage(
+                content="计划状态已丢失,本次计划确认已取消;请重新描述目标。"
+            )]},
+        )
+    plan = Plan.model_validate(planData)
     if tasks is None:
         # 无后台管理器(单测等场景):不支持串行推进,直接放弃而不是挂着(ADR-0012 决策 6)
         return Command(

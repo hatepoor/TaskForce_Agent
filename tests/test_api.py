@@ -14,7 +14,7 @@ from settings.usage import UsageTracker
 
 def _fake_run_turn(events: list):
     def run_turn(graph, config, text=None, resume=None,
-                 on_token=None, on_route=None, on_interrupt=None):
+                 on_token=None, on_route=None, on_interrupt=None, onDone=None):
         events.append((config["configurable"]["thread_id"], text))
         if on_token:
             on_token("你")
@@ -96,7 +96,7 @@ def test_chat_interrupt_emits_event(monkeypatch):
     _setup(monkeypatch)
 
     def interrupt_run(graph, config, text=None, resume=None,
-                      on_token=None, on_route=None, on_interrupt=None):
+                      on_token=None, on_route=None, on_interrupt=None, onDone=None):
         class _It:
             value = {"question": "要哪一年的?"}
         if on_interrupt:
@@ -133,7 +133,7 @@ def _recording_run(seen):
     """假 run_turn:记录 text/resume 透传,并驱动 token 回调(供 SSE 断言)。"""
 
     def run_turn(graph, config, text=None, resume=None,
-                 on_token=None, on_route=None, on_interrupt=None):
+                 on_token=None, on_route=None, on_interrupt=None, onDone=None):
         seen["text"] = text
         seen["resume"] = resume
         if on_token:
@@ -246,7 +246,7 @@ def test_zero_token_turn_emits_final_content(monkeypatch):
     _setup(monkeypatch)
 
     def run_turn(graph, config, text=None, resume=None,
-                 on_token=None, on_route=None, on_interrupt=None):
+                 on_token=None, on_route=None, on_interrupt=None, onDone=None):
         if on_route:
             on_route({"next": "dispatch", "question": None, "tasks": []})
         return AIMessage("已派发 2 个后台任务:[research:x1、retriever:x2]。完成后我会自动汇总。")
